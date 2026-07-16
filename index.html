@@ -65,21 +65,25 @@ body { display: flex; flex-direction: column; }
 .status-dot.active { background: var(--accent); animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
-/* ── Map ── */
-#map {
+/* ── Map wrapper ── */
+#map-wrap {
   flex: 1;
   position: relative;
-  z-index: 1;
+  overflow: hidden;
+  min-height: 0;
 }
-/* Slightly desaturate tiles — fog canvas handles the darkness */
+#map {
+  width: 100%;
+  height: 100%;
+}
 .leaflet-tile { filter: saturate(0.4) brightness(0.7) !important; }
 
-/* Fog canvas — injected via JS into map container */
-.terra-fog {
+/* Fog canvas — sibling of #map, NOT inside Leaflet DOM */
+#fog-canvas {
   position: absolute;
-  top: 0; left: 0;
+  inset: 0;
   pointer-events: none;
-  z-index: 400;
+  z-index: 9999;
 }
 
 /* Current location dot */
@@ -240,7 +244,10 @@ body { display: flex; flex-direction: column; }
   </div>
 </div>
 
-<div id="map"></div>
+<div id="map-wrap">
+  <div id="map"></div>
+  <canvas id="fog-canvas"></canvas>
+</div>
 
 <div class="stats">
   <div class="stat">
@@ -281,20 +288,22 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
 }).addTo(map);
 
-// ─── Fog of War canvas (injected after Leaflet init) ─────────
-const fogCanvas = document.createElement('canvas');
-fogCanvas.className = 'terra-fog';
-const fogCtx = fogCanvas.getContext('2d');
-const FOG_ALPHA = 0.93;
-const REVEAL_R  = 90;
+// ─── Fog of War canvas ───────────────────────────────────────
+const fogCanvas = document.getElementById('fog-canvas');
+const fogCtx    = fogCanvas.getContext('2d');
+const FOG_ALPHA     = 0.93;
+const REVEAL_METERS = 100; // 現実100m半径（ズーム不変）
 
-// Append to map container AFTER Leaflet has set it up
-map.getContainer().appendChild(fogCanvas);
+function metersToPixels(lat, lng) {
+  const a = map.latLngToContainerPoint(L.latLng(lat, lng));
+  const b = map.latLngToContainerPoint(L.latLng(lat + (REVEAL_METERS / 111320), lng));
+  return Math.max(20, Math.abs(a.y - b.y)); // 最低20pxは確保
+}
 
 function resizeFog() {
-  const c = map.getContainer();
-  fogCanvas.width  = c.offsetWidth;
-  fogCanvas.height = c.offsetHeight;
+  const wrap = document.getElementById('map-wrap');
+  fogCanvas.width  = wrap.offsetWidth;
+  fogCanvas.height = wrap.offsetHeight;
   drawFog();
 }
 
@@ -314,14 +323,15 @@ function drawFog() {
   fogCtx.globalCompositeOperation = 'destination-out';
   positions.forEach(ll => {
     const pt = map.latLngToContainerPoint(L.latLng(ll[0], ll[1]));
-    const g  = fogCtx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, REVEAL_R);
+    const r  = metersToPixels(ll[0], ll[1]); // ズームに連動したピクセル半径
+    const g  = fogCtx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, r);
     g.addColorStop(0,    'rgba(0,0,0,1)');
     g.addColorStop(0.55, 'rgba(0,0,0,0.85)');
     g.addColorStop(0.85, 'rgba(0,0,0,0.2)');
     g.addColorStop(1,    'rgba(0,0,0,0)');
     fogCtx.fillStyle = g;
     fogCtx.beginPath();
-    fogCtx.arc(pt.x, pt.y, REVEAL_R, 0, Math.PI * 2);
+    fogCtx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
     fogCtx.fill();
   });
   fogCtx.globalCompositeOperation = 'source-over';
@@ -400,8 +410,8 @@ function loadSavedTrack() {
   } catch(e) {
     map.setView([35.6812, 139.7671], 15);
   }
-  // init fog after map tiles settle
-  map.whenReady(() => setTimeout(() => { resizeFog(); }, 100));
+  // init fog — use rAF to ensure layout is done
+  requestAnimationFrame(() => requestAnimationFrame(() => resizeFog()));
 }
 loadSavedTrack();
 
