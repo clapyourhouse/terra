@@ -469,22 +469,26 @@ function drawFog() {
   });
   fogCtx.fill('evenodd');
 
-  // ── 穴の縁にグラデーションで暗くする（ダンジョン感）──
+  // ── 穴の縁に薄いグラデーションで境界をぼかす（球体に見えないよう控えめに）──
   positions.forEach(ll => {
     const pt = map.latLngToContainerPoint(L.latLng(ll[0], ll[1]));
     const r  = metersToPixels(ll[0], ll[1]);
-    const g  = fogCtx.createRadialGradient(pt.x, pt.y, r * 0.35, pt.x, pt.y, r * 1.05);
+    const g  = fogCtx.createRadialGradient(pt.x, pt.y, r * 0.82, pt.x, pt.y, r * 1.08);
     g.addColorStop(0, 'rgba(4,8,4,0)');
     g.addColorStop(1, `rgba(4,8,4,${FOG_ALPHA})`);
     fogCtx.fillStyle = g;
     fogCtx.beginPath();
-    fogCtx.arc(pt.x, pt.y, r * 1.05, 0, Math.PI * 2);
+    fogCtx.arc(pt.x, pt.y, r * 1.08, 0, Math.PI * 2);
     fogCtx.fill();
   });
 }
 
 map.on('move zoom viewreset', drawFog);
 window.addEventListener('resize', resizeFog);
+// iOS Safari URLバー高さ変動対応
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', resizeFog);
+}
 
 // ─── Current location marker ──────────────────────────────────
 let locationMarker = null;
