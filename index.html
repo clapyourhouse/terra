@@ -74,12 +74,40 @@ body { display: flex; flex-direction: column; }
 /* Slightly desaturate tiles — fog canvas handles the darkness */
 .leaflet-tile { filter: saturate(0.4) brightness(0.7) !important; }
 
-/* Fog canvas sits above tiles, below Leaflet controls */
-#fog-canvas {
+/* Fog canvas — injected via JS into map container */
+.terra-fog {
   position: absolute;
   top: 0; left: 0;
   pointer-events: none;
   z-index: 400;
+}
+
+/* Current location dot */
+.location-dot {
+  width: 16px; height: 16px;
+  background: #4af;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px rgba(64,170,255,0.25);
+  animation: loc-pulse 2s infinite;
+}
+@keyframes loc-pulse {
+  0%,100% { box-shadow: 0 0 0 4px rgba(64,170,255,0.25); }
+  50%      { box-shadow: 0 0 0 8px rgba(64,170,255,0.05); }
+}
+/* Heading cone */
+.heading-icon {
+  position: relative;
+  width: 16px; height: 16px;
+}
+.heading-cone {
+  position: absolute;
+  top: -14px; left: 50%;
+  transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 14px solid rgba(64,170,255,0.7);
 }
 
 /* ── Stats ── */
@@ -212,9 +240,7 @@ body { display: flex; flex-direction: column; }
   </div>
 </div>
 
-<div id="map">
-  <canvas id="fog-canvas"></canvas>
-</div>
+<div id="map"></div>
 
 <div class="stats">
   <div class="stat">
@@ -255,37 +281,44 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
 }).addTo(map);
 
-// ─── Fog of War canvas ───────────────────────────────────────
-const fogCanvas = document.getElementById('fog-canvas');
-const fogCtx    = fogCanvas.getContext('2d');
-const FOG_ALPHA = 0.92;   // 0=transparent 1=pitch black dungeon
-const REVEAL_R  = 90;     // revealed radius in px
+// ─── Fog of War canvas (injected after Leaflet init) ─────────
+const fogCanvas = document.createElement('canvas');
+fogCanvas.className = 'terra-fog';
+const fogCtx = fogCanvas.getContext('2d');
+const FOG_ALPHA = 0.93;
+const REVEAL_R  = 90;
+
+// Append to map container AFTER Leaflet has set it up
+map.getContainer().appendChild(fogCanvas);
 
 function resizeFog() {
-  const mapEl = map.getContainer();
-  fogCanvas.width  = mapEl.offsetWidth;
-  fogCanvas.height = mapEl.offsetHeight;
+  const c = map.getContainer();
+  fogCanvas.width  = c.offsetWidth;
+  fogCanvas.height = c.offsetHeight;
   drawFog();
 }
 
 function drawFog() {
   const w = fogCanvas.width;
   const h = fogCanvas.height;
+  if (!w || !h) return;
   fogCtx.clearRect(0, 0, w, h);
 
-  // 1) Dark dungeon fill
+  // Dark dungeon fill
   fogCtx.fillStyle = `rgba(4, 8, 4, ${FOG_ALPHA})`;
   fogCtx.fillRect(0, 0, w, h);
 
-  // 2) Cut holes where user has walked
+  if (positions.length === 0) return;
+
+  // Cut holes where walked
   fogCtx.globalCompositeOperation = 'destination-out';
   positions.forEach(ll => {
     const pt = map.latLngToContainerPoint(L.latLng(ll[0], ll[1]));
     const g  = fogCtx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, REVEAL_R);
-    g.addColorStop(0,   'rgba(0,0,0,1)');
-    g.addColorStop(0.55,'rgba(0,0,0,0.9)');
-    g.addColorStop(0.8, 'rgba(0,0,0,0.3)');
-    g.addColorStop(1,   'rgba(0,0,0,0)');
+    g.addColorStop(0,    'rgba(0,0,0,1)');
+    g.addColorStop(0.55, 'rgba(0,0,0,0.85)');
+    g.addColorStop(0.85, 'rgba(0,0,0,0.2)');
+    g.addColorStop(1,    'rgba(0,0,0,0)');
     fogCtx.fillStyle = g;
     fogCtx.beginPath();
     fogCtx.arc(pt.x, pt.y, REVEAL_R, 0, Math.PI * 2);
@@ -294,9 +327,49 @@ function drawFog() {
   fogCtx.globalCompositeOperation = 'source-over';
 }
 
-// Redraw fog on any map movement
 map.on('move zoom viewreset', drawFog);
 window.addEventListener('resize', resizeFog);
+
+// ─── Current location marker ──────────────────────────────────
+let locationMarker = null;
+let headingMarker  = null;
+
+function updateLocationMarker(ll, heading) {
+  // Location dot
+  const dotIcon = L.divIcon({
+    className: '',
+    html: '<div class="location-dot"></div>',
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
+  });
+
+  if (!locationMarker) {
+    locationMarker = L.marker(ll, { icon: dotIcon, zIndexOffset: 1000 }).addTo(map);
+  } else {
+    locationMarker.setLatLng(ll);
+  }
+
+  // Heading cone (only if heading is available and reliable)
+  if (heading !== null && heading !== undefined && !isNaN(heading)) {
+    const coneHtml = `<div style="
+      width:16px;height:16px;position:relative;
+      transform:rotate(${heading}deg);transform-origin:8px 24px;">
+      <div class="heading-cone"></div>
+      <div class="location-dot" style="position:absolute;top:8px;left:0;"></div>
+    </div>`;
+    const coneIcon = L.divIcon({
+      className: '',
+      html: coneHtml,
+      iconSize: [16, 32],
+      iconAnchor: [8, 24],
+    });
+    if (!headingMarker) {
+      headingMarker = L.marker(ll, { icon: coneIcon, zIndexOffset: 999 }).addTo(map);
+    } else {
+      headingMarker.setLatLng(ll).setIcon(coneIcon);
+    }
+  }
+}
 
 // ─── State ───────────────────────────────────────────────────
 let tracking      = false;
@@ -327,8 +400,8 @@ function loadSavedTrack() {
   } catch(e) {
     map.setView([35.6812, 139.7671], 15);
   }
-  // init fog after map is positioned
-  setTimeout(() => { resizeFog(); drawFog(); }, 300);
+  // init fog after map tiles settle
+  map.whenReady(() => setTimeout(() => { resizeFog(); }, 100));
 }
 loadSavedTrack();
 
@@ -372,7 +445,11 @@ function stopTracking() {
 
 // ─── GPS callback ─────────────────────────────────────────────
 function onPosition(pos) {
-  const ll = [pos.coords.latitude, pos.coords.longitude];
+  const ll      = [pos.coords.latitude, pos.coords.longitude];
+  const heading = pos.coords.heading;
+
+  // Always update location marker
+  updateLocationMarker(ll, heading);
 
   if (positions.length === 0) {
     map.setView(ll, 17);
@@ -391,7 +468,7 @@ function onPosition(pos) {
   if (polyline) map.removeLayer(polyline);
   polyline = L.polyline(positions, { color: '#b4e664', weight: 3, opacity: 0.9 }).addTo(map);
 
-  // Reveal fog around new point
+  // Reveal fog
   drawFog();
 
   // Pan
