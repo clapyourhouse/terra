@@ -187,6 +187,78 @@ body { display: flex; flex-direction: column; }
   margin-left: 6px;
 }
 
+/* ── History button ── */
+.btn-history {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--sub);
+  font-size: 15px;
+  padding: 4px 8px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+/* ── History panel ── */
+#history-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 19998;
+}
+.history-panel {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  border-radius: 16px 16px 0 0;
+  z-index: 19999;
+  padding: 8px 20px 48px;
+  max-height: 72vh;
+  overflow-y: auto;
+  transform: translateY(100%);
+  transition: transform 0.28s ease;
+}
+.history-panel.open { transform: translateY(0); }
+.history-handle {
+  width: 36px; height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 6px auto 16px;
+}
+.history-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--accent);
+  margin-bottom: 16px;
+}
+.history-section { margin-bottom: 20px; }
+.history-section-label {
+  font-size: 9px;
+  color: var(--sub);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 0;
+  font-size: 13px;
+  color: var(--text);
+  border-bottom: 1px solid rgba(180,230,100,0.05);
+}
+.history-item.done { color: var(--accent); }
+.history-item.locked { color: var(--sub); }
+.history-date { font-size: 10px; color: var(--sub); }
+.history-hint { font-size: 10px; color: var(--sub); }
+.history-empty { font-size: 12px; color: var(--sub); padding: 8px 0; }
+
 /* ── Control ── */
 .control {
   padding: 12px 16px 28px;
@@ -282,10 +354,21 @@ body { display: flex; flex-direction: column; }
     <div class="logo">TERRA</div>
     <div class="tagline">身体が動くほど、世界が広がる</div>
   </div>
-  <div class="header-right">
-    <span class="status-dot" id="dot"></span>
-    <span id="status-text">READY</span>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <button class="btn-history" onclick="shareResult()" title="共有">📤</button>
+    <button class="btn-history" onclick="showHistory()">📋</button>
+    <div class="header-right">
+      <span class="status-dot" id="dot"></span>
+      <span id="status-text">READY</span>
+    </div>
   </div>
+</div>
+
+<div id="history-overlay" onclick="hideHistory()"></div>
+<div class="history-panel" id="history-panel">
+  <div class="history-handle"></div>
+  <div class="history-title">記録</div>
+  <div id="history-content"></div>
 </div>
 
 <div id="map-wrap">
@@ -559,7 +642,10 @@ function loadSavedTrack() {
   try {
     const saved = JSON.parse(localStorage.getItem('terra_track') || '[]');
     const savedZones = JSON.parse(localStorage.getItem('terra_zones') || '[]');
-    unlockedZones = new Map(savedZones);
+    // 旧フォーマット（string）→新フォーマット（{name, date}）マイグレーション
+    unlockedZones = new Map(savedZones.map(([k, v]) => [
+      k, typeof v === 'string' ? { name: v, date: '' } : v
+    ]));
 
     if (saved.length > 1) {
       positions = saved;
@@ -570,7 +656,7 @@ function loadSavedTrack() {
       if (unlockedZones.size === 0) {
         saved.forEach(ll => {
           const zk = posToZone(ll[0], ll[1]);
-          if (!unlockedZones.has(zk)) unlockedZones.set(zk, '');
+          if (!unlockedZones.has(zk)) unlockedZones.set(zk, { name: '', date: '' });
         });
       }
       polyline = L.polyline(saved, { color: '#b4e664', weight: 3, opacity: 0.9 }).addTo(map);
@@ -677,13 +763,15 @@ function onPosition(pos) {
   positions.push(ll);
   totalDist += d;
 
-  // ゾーン記録（新ゾーンなら地名取得）
+  // ゾーン記録（新ゾーンなら地名＋日時を保存）
   const zoneKey = posToZone(ll[0], ll[1]);
   if (!unlockedZones.has(zoneKey)) {
-    unlockedZones.set(zoneKey, ''); // まず仮登録
+    const d = new Date();
+    const date = `${d.getMonth()+1}/${d.getDate()}`;
+    unlockedZones.set(zoneKey, { name: '', date }); // 仮登録
     fetchZoneName(ll[0], ll[1]).then(name => {
-      unlockedZones.set(zoneKey, name);
-      showToast(`🗺 ${name || '新エリア'}を解放！`);
+      unlockedZones.set(zoneKey, { name: name || '未知の地', date });
+      showToast(`🗺 ${name || '未知の地'}を解放！`);
       updateDisplay();
       try { localStorage.setItem('terra_zones', JSON.stringify([...unlockedZones])); } catch(e) {}
     });
@@ -749,6 +837,85 @@ function showToast(msg) {
   el.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ─── 記録シート ──────────────────────────────────────────────
+function showHistory() {
+  const s = { dist: totalDist, zones: unlockedZones.size, streak: streakDays };
+
+  // ゾーン一覧（新しい順）
+  const zoneList = [...unlockedZones.values()].reverse();
+  let zonesHtml = zoneList.length === 0
+    ? '<div class="history-empty">まだ解放したゾーンがありません</div>'
+    : zoneList.map(z =>
+        `<div class="history-item done">
+          <span>🗺 ${z.name || '未知の地'}</span>
+          <span class="history-date">${z.date}</span>
+        </div>`
+      ).join('');
+
+  // ミッション一覧
+  let missionsHtml = MISSIONS.map(m => {
+    const done = m.check(s);
+    return `<div class="history-item ${done ? 'done' : 'locked'}">
+      <span>${done ? '✓' : '→'} ${m.label}</span>
+      <span class="history-hint">${m.hint}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('history-content').innerHTML = `
+    <div class="history-section">
+      <div class="history-section-label">解放したゾーン（${zoneList.length}）</div>
+      ${zonesHtml}
+    </div>
+    <div class="history-section">
+      <div class="history-section-label">ミッション</div>
+      ${missionsHtml}
+    </div>`;
+
+  document.getElementById('history-overlay').style.display = 'block';
+  requestAnimationFrame(() => document.getElementById('history-panel').classList.add('open'));
+}
+
+function hideHistory() {
+  document.getElementById('history-panel').classList.remove('open');
+  setTimeout(() => { document.getElementById('history-overlay').style.display = 'none'; }, 280);
+}
+
+// ─── SNS共有 ─────────────────────────────────────────────────
+async function shareResult() {
+  const zoneNames = [...unlockedZones.values()]
+    .filter(z => z.name)
+    .map(z => z.name);
+  const zoneText = zoneNames.length === 0
+    ? 'まだ探索なし'
+    : zoneNames.slice(0, 3).join(' / ') + (zoneNames.length > 3 ? ' など' : '');
+
+  const score = positions.length === 0 ? 0
+    : Math.floor(totalDist * 50 + unlockedZones.size * 50 + streakDays * 30);
+
+  const streakText = streakDays > 0 ? ` 🔥${streakDays}日連続` : '';
+
+  const text = `🗺 TERRAで${unlockedZones.size}ゾーンを解放\n${zoneText}\n${totalDist.toFixed(1)}km${streakText}  Score ${score}\n\n身体が動くほど、世界が広がる\nhttps://clapyourhouse.github.io/terra`;
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ text });
+    } catch(e) {
+      if (e.name !== 'AbortError') copyToClipboard(text);
+    }
+  } else {
+    copyToClipboard(text);
+  }
+}
+
+function copyToClipboard(text) {
+  try {
+    navigator.clipboard.writeText(text);
+    showToast('クリップボードにコピーしました');
+  } catch(e) {
+    showToast('共有できませんでした');
+  }
 }
 
 // ─── Milestone ───────────────────────────────────────────────
