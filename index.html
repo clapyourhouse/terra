@@ -86,6 +86,22 @@ body { display: flex; flex-direction: column; }
   z-index: 9999;
 }
 
+/* Recenter button */
+#btn-recenter {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  z-index: 10000;
+  width: 40px; height: 40px;
+  background: rgba(13,22,13,0.9);
+  border: 1px solid rgba(180,230,100,0.3);
+  border-radius: 8px;
+  color: var(--accent);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+
 /* Current location dot */
 .location-dot {
   width: 16px; height: 16px;
@@ -275,6 +291,7 @@ body { display: flex; flex-direction: column; }
 <div id="map-wrap">
   <div id="map"></div>
   <canvas id="fog-canvas"></canvas>
+  <button id="btn-recenter" onclick="recenterMap()" title="現在地へ">◎</button>
 </div>
 
 <div class="stats">
@@ -532,11 +549,23 @@ function toggleTracking() {
   tracking ? stopTracking() : startTracking();
 }
 
+let lastKnownPos = null; // 現在地保持
+
+function recenterMap() {
+  if (lastKnownPos) {
+    map.setView(lastKnownPos, Math.max(map.getZoom(), 16));
+  } else {
+    showToast('GPSを取得中です');
+  }
+}
+
 function startTracking() {
   if (!navigator.geolocation) { showToast('GPSが利用できません'); return; }
   tracking  = true;
   startTime = Date.now();
   timerInt  = setInterval(updateTimer, 1000);
+  // 記録復元後に広域表示になっている場合、ズームを戻す
+  if (map.getZoom() < 16) map.setZoom(16);
 
   document.getElementById('btn-main').textContent = 'STOP';
   document.getElementById('btn-main').classList.add('tracking');
@@ -574,6 +603,9 @@ function stopTracking() {
 function onPosition(pos) {
   const ll      = [pos.coords.latitude, pos.coords.longitude];
   const heading = pos.coords.heading;
+
+  // 現在地を保持
+  lastKnownPos = ll;
 
   // Always update location marker
   updateLocationMarker(ll, heading);
