@@ -451,29 +451,32 @@ function drawFog() {
   const h = fogCanvas.height;
   if (!w || !h) return;
   fogCtx.clearRect(0, 0, w, h);
+
+  // 1. 全面を霧で塗る
   fogCtx.fillStyle = `rgba(4, 8, 4, ${FOG_ALPHA})`;
+  fogCtx.fillRect(0, 0, w, h);
 
-  if (positions.length === 0) {
-    fogCtx.fillRect(0, 0, w, h);
-    return;
-  }
+  if (positions.length === 0) return;
 
-  // ── evenodd で穴あき霧を描く（destination-out不要・iOS Safari対応）──
+  // 2. clip() で全円のunionを取ってクリア
+  //    nonzeroルール：重なっても正しくunion扱い（evenoddの重複バグなし）
+  fogCtx.save();
   fogCtx.beginPath();
-  fogCtx.rect(0, 0, w, h); // 外枠（時計回り）
   positions.forEach(ll => {
     const pt = map.latLngToContainerPoint(L.latLng(ll[0], ll[1]));
     const r  = metersToPixels(ll[0], ll[1]);
     fogCtx.moveTo(pt.x + r, pt.y);
-    fogCtx.arc(pt.x, pt.y, r, 0, Math.PI * 2, true); // 反時計回り＝穴
+    fogCtx.arc(pt.x, pt.y, r, 0, Math.PI * 2); // 時計回り（デフォルト）
   });
-  fogCtx.fill('evenodd');
+  fogCtx.clip(); // clip内 = 歩いたエリア全体
+  fogCtx.clearRect(0, 0, w, h); // 地図を透過表示
+  fogCtx.restore();
 
-  // ── 穴の縁に薄いグラデーションで境界をぼかす（球体に見えないよう控えめに）──
+  // 3. 縁をグラデーションでぼかす（控えめに）
   positions.forEach(ll => {
     const pt = map.latLngToContainerPoint(L.latLng(ll[0], ll[1]));
     const r  = metersToPixels(ll[0], ll[1]);
-    const g  = fogCtx.createRadialGradient(pt.x, pt.y, r * 0.82, pt.x, pt.y, r * 1.08);
+    const g  = fogCtx.createRadialGradient(pt.x, pt.y, r * 0.85, pt.x, pt.y, r * 1.08);
     g.addColorStop(0, 'rgba(4,8,4,0)');
     g.addColorStop(1, `rgba(4,8,4,${FOG_ALPHA})`);
     fogCtx.fillStyle = g;
