@@ -123,24 +123,52 @@ body { display: flex; flex-direction: column; }
 }
 .stat {
   flex: 1;
-  padding: 12px 8px;
+  padding: 10px 4px;
   text-align: center;
   border-right: 1px solid var(--border);
 }
 .stat:last-child { border-right: none; }
 .stat-value {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--accent);
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
 .stat-unit {
-  font-size: 9px;
+  font-size: 8px;
   color: var(--sub);
-  letter-spacing: 1.5px;
+  letter-spacing: 1px;
   text-transform: uppercase;
   margin-top: 4px;
+}
+
+/* ── Mission card ── */
+.mission-card {
+  background: rgba(180,230,100,0.05);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 14px;
+  min-height: 44px;
+}
+.mission-done {
+  font-size: 10px;
+  color: var(--sub);
+  letter-spacing: 1px;
+  line-height: 1.6;
+}
+.mission-done span { color: var(--accent); margin-right: 6px; }
+.mission-next {
+  font-size: 12px;
+  color: var(--text);
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+.mission-next em {
+  font-style: normal;
+  color: var(--sub);
+  font-size: 10px;
+  margin-left: 6px;
 }
 
 /* ── Control ── */
@@ -255,16 +283,24 @@ body { display: flex; flex-direction: column; }
     <div class="stat-unit">KM</div>
   </div>
   <div class="stat">
-    <div class="stat-value" id="stat-score">—</div>
-    <div class="stat-unit">TERRA SCORE</div>
+    <div class="stat-value" id="stat-areas">0</div>
+    <div class="stat-unit">エリア</div>
   </div>
   <div class="stat">
-    <div class="stat-value" id="stat-time">0:00</div>
-    <div class="stat-unit">TIME</div>
+    <div class="stat-value" id="stat-streak">0</div>
+    <div class="stat-unit">連続日</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value" id="stat-score">—</div>
+    <div class="stat-unit">SCORE</div>
   </div>
 </div>
 
 <div class="control">
+  <div class="mission-card" id="mission-card">
+    <div class="mission-done" id="mission-done"></div>
+    <div class="mission-next" id="mission-next">読み込み中…</div>
+  </div>
   <button class="btn-main" id="btn-main" onclick="toggleTracking()">START</button>
   <div class="affiliate">
     まずは装備から →
@@ -382,23 +418,100 @@ function updateLocationMarker(ll, heading) {
 }
 
 // ─── State ───────────────────────────────────────────────────
-let tracking      = false;
-let watchId       = null;
-let positions     = [];
-let polyline      = null;
-let startTime     = null;
-let timerInt      = null;
-let totalDist     = 0;
-let lastMilestone = 0;
+let tracking       = false;
+let watchId        = null;
+let positions      = [];
+let polyline       = null;
+let startTime      = null;
+let timerInt       = null;
+let totalDist      = 0;
+let lastMilestone  = 0;
+let exploredCells  = new Set(); // "lat3,lng3" 形式、約100m単位
+let streakDays     = 0;
+
+// ─── Grid cell (約100m) ──────────────────────────────────────
+function posToCell(lat, lng) {
+  return `${(lat * 1000 | 0)},${(lng * 1000 | 0)}`;
+}
+
+// ─── 連続日数 ────────────────────────────────────────────────
+function loadStreak() {
+  try {
+    const d = JSON.parse(localStorage.getItem('terra_streak') || '{"streak":0,"lastDate":null}');
+    const today = new Date().toDateString();
+    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+    if (d.lastDate === today || d.lastDate === yesterday.toDateString()) {
+      streakDays = d.streak;
+    } else {
+      streakDays = 0; // 途切れた
+    }
+  } catch(e) { streakDays = 0; }
+}
+
+function saveStreak() {
+  try {
+    const today = new Date().toDateString();
+    const d = JSON.parse(localStorage.getItem('terra_streak') || '{"streak":0,"lastDate":null}');
+    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+    let next;
+    if (d.lastDate === today)                       next = d.streak;      // 今日すでに記録済み
+    else if (d.lastDate === yesterday.toDateString()) next = d.streak + 1; // 連続
+    else                                              next = 1;             // リセット
+    streakDays = next;
+    localStorage.setItem('terra_streak', JSON.stringify({ streak: next, lastDate: today }));
+  } catch(e) {}
+}
+
+// ─── ミッション定義 ──────────────────────────────────────────
+const MISSIONS = [
+  { label: '身体が目覚めた',          hint: '300m歩く',    check: s => s.dist  >= 0.3  },
+  { label: '身体が温まった',          hint: '1km歩く',     check: s => s.dist  >= 1.0  },
+  { label: '視野が広がった',          hint: '5エリア探索', check: s => s.areas >= 5    },
+  { label: '地図が色づいた',          hint: '3km歩く',     check: s => s.dist  >= 3.0  },
+  { label: '新しい街を発見した',      hint: '15エリア探索',check: s => s.areas >= 15   },
+  { label: '3日連続で外に出た',       hint: '3日続ける',   check: s => s.streak >= 3   },
+  { label: '身体が地図を塗り替えた',  hint: '30エリア探索',check: s => s.areas >= 30   },
+  { label: '習慣になった',            hint: '7日続ける',   check: s => s.streak >= 7   },
+  { label: '世界が広がった',          hint: '10km歩く',    check: s => s.dist  >= 10.0 },
+];
+
+function updateMissions() {
+  const s = { dist: totalDist, areas: exploredCells.size, streak: streakDays };
+  const done  = MISSIONS.filter(m => m.check(s));
+  const next  = MISSIONS.find(m => !m.check(s));
+
+  const doneEl = document.getElementById('mission-done');
+  const nextEl = document.getElementById('mission-next');
+
+  if (done.length > 0) {
+    doneEl.innerHTML = done.slice(-2).map(m => `<span>✓</span>${m.label}`).join('　');
+  } else {
+    doneEl.innerHTML = '';
+  }
+
+  if (next) {
+    nextEl.innerHTML = `→ ${next.label}<em>${next.hint}</em>`;
+  } else {
+    nextEl.innerHTML = '🌍 すべてのミッション達成';
+  }
+}
 
 // ─── Load saved track ────────────────────────────────────────
 function loadSavedTrack() {
+  loadStreak();
   try {
     const saved = JSON.parse(localStorage.getItem('terra_track') || '[]');
+    const savedCells = JSON.parse(localStorage.getItem('terra_cells') || '[]');
+    exploredCells = new Set(savedCells);
+
     if (saved.length > 1) {
       positions = saved;
       for (let i = 1; i < saved.length; i++) {
         totalDist += haversine(saved[i-1], saved[i]);
+      }
+      // セルが未保存の場合は軌跡から再計算
+      if (exploredCells.size === 0) {
+        saved.forEach(ll => exploredCells.add(posToCell(ll[0], ll[1])));
       }
       polyline = L.polyline(saved, { color: '#b4e664', weight: 3, opacity: 0.9 }).addTo(map);
       map.fitBounds(polyline.getBounds(), { padding: [40, 40] });
@@ -410,7 +523,6 @@ function loadSavedTrack() {
   } catch(e) {
     map.setView([35.6812, 139.7671], 15);
   }
-  // init fog — use rAF to ensure layout is done
   requestAnimationFrame(() => requestAnimationFrame(() => resizeFog()));
 }
 loadSavedTrack();
@@ -449,8 +561,13 @@ function stopTracking() {
   document.getElementById('dot').classList.remove('active');
   document.getElementById('status-text').textContent = 'PAUSED';
 
-  try { localStorage.setItem('terra_track', JSON.stringify(positions)); } catch(e) {}
+  saveStreak();
+  try {
+    localStorage.setItem('terra_track', JSON.stringify(positions));
+    localStorage.setItem('terra_cells', JSON.stringify([...exploredCells]));
+  } catch(e) {}
   showToast('記録を保存しました');
+  updateDisplay();
 }
 
 // ─── GPS callback ─────────────────────────────────────────────
@@ -473,6 +590,9 @@ function onPosition(pos) {
 
   positions.push(ll);
   totalDist += d;
+
+  // セル記録
+  exploredCells.add(posToCell(ll[0], ll[1]));
 
   // Redraw path
   if (polyline) map.removeLayer(polyline);
@@ -498,9 +618,14 @@ function onGpsError() { showToast('GPS取得中...'); }
 
 // ─── Display ─────────────────────────────────────────────────
 function updateDisplay() {
-  document.getElementById('stat-dist').textContent  = totalDist.toFixed(2);
+  document.getElementById('stat-dist').textContent   = totalDist.toFixed(2);
+  document.getElementById('stat-areas').textContent  = exploredCells.size;
+  document.getElementById('stat-streak').textContent = streakDays;
+  // スコア = 距離 × 50 + エリア × 20 + 連続日 × 30
   document.getElementById('stat-score').textContent =
-    positions.length === 0 ? '—' : Math.floor(totalDist * 100 + positions.length * 3);
+    positions.length === 0 ? '—'
+    : Math.floor(totalDist * 50 + exploredCells.size * 20 + streakDays * 30);
+  updateMissions();
 }
 
 function updateTimer() {
