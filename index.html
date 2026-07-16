@@ -186,6 +186,13 @@ body { display: flex; flex-direction: column; }
   font-size: 10px;
   margin-left: 6px;
 }
+.zone-hint {
+  font-size: 10px;
+  color: var(--accent);
+  opacity: 0.7;
+  margin-top: 5px;
+  letter-spacing: 0.3px;
+}
 
 /* ── History button ── */
 .btn-history {
@@ -299,6 +306,37 @@ body { display: flex; flex-direction: column; }
   padding-bottom: 1px;
 }
 
+/* ── Zone unlock overlay ── */
+#zone-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 8, 4, 0.9);
+  z-index: 20000;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.35s;
+  pointer-events: none;
+}
+#zone-overlay.show { opacity: 1; }
+#zone-emoji { font-size: 40px; margin-bottom: 14px; }
+#zone-name-big {
+  font-size: 34px;
+  font-weight: 900;
+  color: var(--accent);
+  letter-spacing: 4px;
+  line-height: 1.2;
+}
+#zone-label {
+  font-size: 11px;
+  color: var(--sub);
+  letter-spacing: 4px;
+  margin-top: 10px;
+  text-transform: uppercase;
+}
+
 /* ── Toast ── */
 .toast {
   position: fixed;
@@ -382,17 +420,9 @@ body { display: flex; flex-direction: column; }
     <div class="stat-value" id="stat-dist">0.00</div>
     <div class="stat-unit">KM</div>
   </div>
-  <div class="stat">
-    <div class="stat-value" id="stat-areas">0</div>
-    <div class="stat-unit">エリア</div>
-  </div>
-  <div class="stat">
+  <div class="stat" style="border-right:none;">
     <div class="stat-value" id="stat-streak">0</div>
     <div class="stat-unit">連続日</div>
-  </div>
-  <div class="stat">
-    <div class="stat-value" id="stat-score">—</div>
-    <div class="stat-unit">SCORE</div>
   </div>
 </div>
 
@@ -412,6 +442,15 @@ body { display: flex; flex-direction: column; }
 <div class="milestone" id="milestone">
   <div class="milestone-km" id="milestone-km"></div>
   <div class="milestone-label">KM UNLOCKED</div>
+</div>
+
+<!-- ゾーン解放 全画面イベント -->
+<div id="zone-overlay">
+  <div id="zone-content">
+    <div id="zone-emoji">🗺</div>
+    <div id="zone-name-big"></div>
+    <div id="zone-label">を解放した</div>
+  </div>
 </div>
 
 <script>
@@ -637,7 +676,9 @@ function updateMissions() {
   }
 
   if (next) {
-    nextEl.innerHTML = `→ ${next.label}<em>${next.hint}</em>`;
+    const hint = getNextZoneHint();
+    const hintHtml = hint ? `<div class="zone-hint">📍 ${hint}</div>` : '';
+    nextEl.innerHTML = `→ ${next.label}<em>${next.hint}</em>${hintHtml}`;
   } else {
     nextEl.innerHTML = '🌍 すべてのミッション達成';
   }
@@ -777,8 +818,9 @@ function onPosition(pos) {
     const date = `${d.getMonth()+1}/${d.getDate()}`;
     unlockedZones.set(zoneKey, { name: '', date }); // 仮登録
     fetchZoneName(ll[0], ll[1]).then(name => {
-      unlockedZones.set(zoneKey, { name: name || '未知の地', date });
-      showToast(`🗺 ${name || '未知の地'}を解放！`);
+      const zoneName = name || '未知の地';
+      unlockedZones.set(zoneKey, { name: zoneName, date });
+      showZoneUnlock(zoneName);
       updateDisplay();
       try { localStorage.setItem('terra_zones', JSON.stringify([...unlockedZones])); } catch(e) {}
     });
@@ -809,12 +851,7 @@ function onGpsError() { showToast('GPS取得中...'); }
 // ─── Display ─────────────────────────────────────────────────
 function updateDisplay() {
   document.getElementById('stat-dist').textContent   = totalDist.toFixed(2);
-  document.getElementById('stat-areas').textContent  = unlockedZones.size;
   document.getElementById('stat-streak').textContent = streakDays > 0 ? '🔥' + streakDays : '0';
-  // スコア = 距離 × 50 + ゾーン × 50 + 連続日 × 30
-  document.getElementById('stat-score').textContent =
-    positions.length === 0 ? '—'
-    : Math.floor(totalDist * 50 + unlockedZones.size * 50 + streakDays * 30);
   updateMissions();
 }
 
@@ -849,6 +886,7 @@ function showToast(msg) {
 // ─── 記録シート ──────────────────────────────────────────────
 function showHistory() {
   const s = { dist: totalDist, zones: unlockedZones.size, streak: streakDays };
+  // スコア表示削除済み
 
   // ゾーン一覧（新しい順）
   const zoneList = [...unlockedZones.values()].reverse();
@@ -889,6 +927,44 @@ function hideHistory() {
   setTimeout(() => { document.getElementById('history-overlay').style.display = 'none'; }, 280);
 }
 
+// ─── ゾーン解放 全画面演出 ──────────────────────────────────
+let zoneOverlayTimer = null;
+function showZoneUnlock(name) {
+  const el = document.getElementById('zone-overlay');
+  document.getElementById('zone-name-big').textContent = name;
+  el.style.display = 'flex';
+  requestAnimationFrame(() => el.classList.add('show'));
+  clearTimeout(zoneOverlayTimer);
+  zoneOverlayTimer = setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => { el.style.display = 'none'; }, 380);
+  }, 2600);
+}
+
+// ─── 次エリア誘導ヒント ──────────────────────────────────────
+function getNextZoneHint() {
+  if (!lastKnownPos) return null;
+  const [lat, lng] = lastKnownPos;
+  const zLat = Math.floor(lat / 0.0045);
+  const zLng = Math.floor(lng / 0.005);
+  // 現在ゾーン内の位置（端からどれくらいか）
+  const fracLat = (lat / 0.0045) - zLat; // 0〜1
+  const fracLng = (lng / 0.005)  - zLng;
+  // 最も近い未探索方向を探す
+  const candidates = [
+    { dy:  1, dx:  0, label: '北', dist: (1 - fracLat) * 500 },
+    { dy: -1, dx:  0, label: '南', dist: fracLat * 500 },
+    { dy:  0, dx:  1, label: '東', dist: (1 - fracLng) * 500 },
+    { dy:  0, dx: -1, label: '西', dist: fracLng * 500 },
+  ];
+  const unvisited = candidates
+    .filter(c => !unlockedZones.has(`${zLat + c.dy},${zLng + c.dx}`))
+    .sort((a, b) => a.dist - b.dist);
+  if (unvisited.length === 0) return null;
+  const nearest = unvisited[0];
+  return `${nearest.label}へ約${Math.round(nearest.dist / 100) * 100}m — 新しいエリアがある`;
+}
+
 // ─── SNS共有 ─────────────────────────────────────────────────
 async function shareResult() {
   const zoneNames = [...unlockedZones.values()]
@@ -898,12 +974,9 @@ async function shareResult() {
     ? 'まだ探索なし'
     : zoneNames.slice(0, 3).join(' / ') + (zoneNames.length > 3 ? ' など' : '');
 
-  const score = positions.length === 0 ? 0
-    : Math.floor(totalDist * 50 + unlockedZones.size * 50 + streakDays * 30);
-
   const streakText = streakDays > 0 ? ` 🔥${streakDays}日連続` : '';
 
-  const text = `🗺 TERRAで${unlockedZones.size}ゾーンを解放\n${zoneText}\n${totalDist.toFixed(1)}km${streakText}  Score ${score}\n\n身体が動くほど、世界が広がる\nhttps://clapyourhouse.github.io/terra`;
+  const text = `🗺 TERRAで${unlockedZones.size}エリアを解放\n${zoneText}\n${totalDist.toFixed(1)}km${streakText}\n\n身体が動くほど、世界が広がる\nhttps://clapyourhouse.github.io/terra`;
 
   if (navigator.share) {
     try {
