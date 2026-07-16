@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>TERRA — 身体が動くほど、世界が広がる</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+:root {
+  --bg: #080f08;
+  --panel: #0d160d;
+  --border: rgba(180,230,100,0.12);
+  --accent: #b4e664;
+  --accent-dim: rgba(180,230,100,0.15);
+  --text: #eef2e8;
+  --sub: #6a7a5a;
+}
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'Arial', sans-serif;
+  overflow: hidden;
+}
+body { display: flex; flex-direction: column; }
+
+/* ── Header ── */
+.header {
+  padding: 14px 18px 10px;
+  background: var(--bg);
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+.logo {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 6px;
+  color: var(--accent);
+  line-height: 1;
+}
+.tagline {
+  font-size: 9px;
+  color: var(--sub);
+  letter-spacing: 1.5px;
+  margin-top: 4px;
+}
+.header-right {
+  font-size: 10px;
+  color: var(--sub);
+  text-align: right;
+}
+.status-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--sub);
+  margin-right: 4px;
+  vertical-align: middle;
+}
+.status-dot.active { background: var(--accent); animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* ── Map ── */
+#map {
+  flex: 1;
+  position: relative;
+  z-index: 1;
+}
+/* Slightly desaturate tiles — fog canvas handles the darkness */
+.leaflet-tile { filter: saturate(0.4) brightness(0.7) !important; }
+
+/* Fog canvas sits above tiles, below Leaflet controls */
+#fog-canvas {
+  position: absolute;
+  top: 0; left: 0;
+  pointer-events: none;
+  z-index: 400;
+}
+
+/* ── Stats ── */
+.stats {
+  display: flex;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.stat {
+  flex: 1;
+  padding: 12px 8px;
+  text-align: center;
+  border-right: 1px solid var(--border);
+}
+.stat:last-child { border-right: none; }
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.stat-unit {
+  font-size: 9px;
+  color: var(--sub);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+/* ── Control ── */
+.control {
+  padding: 12px 16px 28px;
+  background: var(--bg);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.btn-main {
+  width: 100%;
+  padding: 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--accent);
+  color: var(--bg);
+}
+.btn-main.tracking {
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+.affiliate {
+  text-align: center;
+  font-size: 11px;
+  color: var(--sub);
+  padding: 2px 0;
+}
+.affiliate a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(180,230,100,0.3);
+  padding-bottom: 1px;
+}
+
+/* ── Toast ── */
+.toast {
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(180,230,100,0.15);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.3s;
+  white-space: nowrap;
+}
+.toast.show { opacity: 1; }
+
+/* ── Milestone overlay ── */
+.milestone {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%,-50%);
+  text-align: center;
+  z-index: 9998;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.milestone.show { opacity: 1; }
+.milestone-km {
+  font-size: 52px;
+  font-weight: 900;
+  color: var(--accent);
+  letter-spacing: 4px;
+  line-height: 1;
+}
+.milestone-label {
+  font-size: 11px;
+  color: var(--sub);
+  letter-spacing: 3px;
+  margin-top: 6px;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="logo">TERRA</div>
+    <div class="tagline">身体が動くほど、世界が広がる</div>
+  </div>
+  <div class="header-right">
+    <span class="status-dot" id="dot"></span>
+    <span id="status-text">READY</span>
+  </div>
+</div>
+
+<div id="map">
+  <canvas id="fog-canvas"></canvas>
+</div>
+
+<div class="stats">
+  <div class="stat">
+    <div class="stat-value" id="stat-dist">0.00</div>
+    <div class="stat-unit">KM</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value" id="stat-score">—</div>
+    <div class="stat-unit">TERRA SCORE</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value" id="stat-time">0:00</div>
+    <div class="stat-unit">TIME</div>
+  </div>
+</div>
+
+<div class="control">
+  <button class="btn-main" id="btn-main" onclick="toggleTracking()">START</button>
+  <div class="affiliate">
+    まずは装備から →
+    <a href="https://amzn.to/placeholder" id="affiliate-link" target="_blank">ランニングシューズを探す</a>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="milestone" id="milestone">
+  <div class="milestone-km" id="milestone-km"></div>
+  <div class="milestone-label">KM UNLOCKED</div>
+</div>
+
+<script>
+// ─── Map setup ───────────────────────────────────────────────
+const map = L.map('map', {
+  zoomControl: false,
+  attributionControl: false,
+});
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19
+}).addTo(map);
+
+// ─── Fog of War canvas ───────────────────────────────────────
+const fogCanvas = document.getElementById('fog-canvas');
+const fogCtx    = fogCanvas.getContext('2d');
+const FOG_ALPHA = 0.92;   // 0=transparent 1=pitch black dungeon
+const REVEAL_R  = 90;     // revealed radius in px
+
+function resizeFog() {
+  const mapEl = map.getContainer();
+  fogCanvas.width  = mapEl.offsetWidth;
+  fogCanvas.height = mapEl.offsetHeight;
+  drawFog();
+}
+
+function drawFog() {
+  const w = fogCanvas.width;
+  const h = fogCanvas.height;
+  fogCtx.clearRect(0, 0, w, h);
+
+  // 1) Dark dungeon fill
+  fogCtx.fillStyle = `rgba(4, 8, 4, ${FOG_ALPHA})`;
+  fogCtx.fillRect(0, 0, w, h);
+
+  // 2) Cut holes where user has walked
+  fogCtx.globalCompositeOperation = 'destination-out';
+  positions.forEach(ll => {
+    const pt = map.latLngToContainerPoint(L.latLng(ll[0], ll[1]));
+    const g  = fogCtx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, REVEAL_R);
+    g.addColorStop(0,   'rgba(0,0,0,1)');
+    g.addColorStop(0.55,'rgba(0,0,0,0.9)');
+    g.addColorStop(0.8, 'rgba(0,0,0,0.3)');
+    g.addColorStop(1,   'rgba(0,0,0,0)');
+    fogCtx.fillStyle = g;
+    fogCtx.beginPath();
+    fogCtx.arc(pt.x, pt.y, REVEAL_R, 0, Math.PI * 2);
+    fogCtx.fill();
+  });
+  fogCtx.globalCompositeOperation = 'source-over';
+}
+
+// Redraw fog on any map movement
+map.on('move zoom viewreset', drawFog);
+window.addEventListener('resize', resizeFog);
+
+// ─── State ───────────────────────────────────────────────────
+let tracking      = false;
+let watchId       = null;
+let positions     = [];
+let polyline      = null;
+let startTime     = null;
+let timerInt      = null;
+let totalDist     = 0;
+let lastMilestone = 0;
+
+// ─── Load saved track ────────────────────────────────────────
+function loadSavedTrack() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('terra_track') || '[]');
+    if (saved.length > 1) {
+      positions = saved;
+      for (let i = 1; i < saved.length; i++) {
+        totalDist += haversine(saved[i-1], saved[i]);
+      }
+      polyline = L.polyline(saved, { color: '#b4e664', weight: 3, opacity: 0.9 }).addTo(map);
+      map.fitBounds(polyline.getBounds(), { padding: [40, 40] });
+      updateDisplay();
+      showToast('前回の記録を復元しました');
+    } else {
+      map.setView([35.6812, 139.7671], 15);
+    }
+  } catch(e) {
+    map.setView([35.6812, 139.7671], 15);
+  }
+  // init fog after map is positioned
+  setTimeout(() => { resizeFog(); drawFog(); }, 300);
+}
+loadSavedTrack();
+
+// ─── Tracking ────────────────────────────────────────────────
+function toggleTracking() {
+  tracking ? stopTracking() : startTracking();
+}
+
+function startTracking() {
+  if (!navigator.geolocation) { showToast('GPSが利用できません'); return; }
+  tracking  = true;
+  startTime = Date.now();
+  timerInt  = setInterval(updateTimer, 1000);
+
+  document.getElementById('btn-main').textContent = 'STOP';
+  document.getElementById('btn-main').classList.add('tracking');
+  document.getElementById('dot').classList.add('active');
+  document.getElementById('status-text').textContent = 'TRACKING';
+
+  watchId = navigator.geolocation.watchPosition(onPosition, onGpsError, {
+    enableHighAccuracy: true,
+    timeout: 15000,
+    maximumAge: 1000,
+  });
+  showToast('トラッキング開始');
+}
+
+function stopTracking() {
+  tracking = false;
+  if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+  clearInterval(timerInt);
+
+  document.getElementById('btn-main').textContent = 'START';
+  document.getElementById('btn-main').classList.remove('tracking');
+  document.getElementById('dot').classList.remove('active');
+  document.getElementById('status-text').textContent = 'PAUSED';
+
+  try { localStorage.setItem('terra_track', JSON.stringify(positions)); } catch(e) {}
+  showToast('記録を保存しました');
+}
+
+// ─── GPS callback ─────────────────────────────────────────────
+function onPosition(pos) {
+  const ll = [pos.coords.latitude, pos.coords.longitude];
+
+  if (positions.length === 0) {
+    map.setView(ll, 17);
+    positions.push(ll);
+    drawFog();
+    return;
+  }
+
+  const d = haversine(positions[positions.length - 1], ll);
+  if (d < 0.003) return; // < 3m noise
+
+  positions.push(ll);
+  totalDist += d;
+
+  // Redraw path
+  if (polyline) map.removeLayer(polyline);
+  polyline = L.polyline(positions, { color: '#b4e664', weight: 3, opacity: 0.9 }).addTo(map);
+
+  // Reveal fog around new point
+  drawFog();
+
+  // Pan
+  map.panTo(ll);
+  updateDisplay();
+
+  // Milestone every 0.5km
+  if (Math.floor(totalDist * 2) > Math.floor(lastMilestone * 2)) {
+    lastMilestone = totalDist;
+    showMilestone((Math.floor(totalDist * 2) / 2).toFixed(1));
+  }
+
+  try { localStorage.setItem('terra_track', JSON.stringify(positions)); } catch(e) {}
+}
+
+function onGpsError() { showToast('GPS取得中...'); }
+
+// ─── Display ─────────────────────────────────────────────────
+function updateDisplay() {
+  document.getElementById('stat-dist').textContent  = totalDist.toFixed(2);
+  document.getElementById('stat-score').textContent =
+    positions.length === 0 ? '—' : Math.floor(totalDist * 100 + positions.length * 3);
+}
+
+function updateTimer() {
+  if (!startTime) return;
+  const s  = Math.floor((Date.now() - startTime) / 1000);
+  const m  = Math.floor(s / 60);
+  const ss = s % 60;
+  document.getElementById('stat-time').textContent = `${m}:${ss.toString().padStart(2,'0')}`;
+}
+
+// ─── Haversine ───────────────────────────────────────────────
+function haversine(a, b) {
+  const R    = 6371;
+  const dLat = (b[0] - a[0]) * Math.PI / 180;
+  const dLon = (b[1] - a[1]) * Math.PI / 180;
+  const x    = Math.sin(dLat/2)**2
+    + Math.cos(a[0]*Math.PI/180) * Math.cos(b[0]*Math.PI/180) * Math.sin(dLon/2)**2;
+  return R * 2 * Math.asin(Math.sqrt(x));
+}
+
+// ─── Toast ───────────────────────────────────────────────────
+let toastTimer = null;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ─── Milestone ───────────────────────────────────────────────
+let milestoneTimer = null;
+function showMilestone(km) {
+  const el = document.getElementById('milestone');
+  document.getElementById('milestone-km').textContent = km + ' KM';
+  el.classList.add('show');
+  clearTimeout(milestoneTimer);
+  milestoneTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>

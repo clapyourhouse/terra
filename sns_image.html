@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<!--
+  SNS投稿用画像
+  推奨サイズ: 1080×1080px (Instagram正方形) または 1080×1350px (縦長)
+  ブラウザで開いて、DevToolsでサイズを1080×1080に固定してスクリーンショット
+-->
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  width: 1080px;
+  height: 1080px;
+  background: #080f08;
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+  overflow: hidden;
+}
+
+.canvas {
+  width: 1080px;
+  height: 1080px;
+  position: relative;
+  background: #080f08;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Background grid lines */
+.grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(180,230,100,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(180,230,100,0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+/* Map-like concentric circles */
+.circles {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.circle {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(180,230,100,0.07);
+}
+
+/* Glowing path visualization */
+.path-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* Top label */
+.top-label {
+  position: absolute;
+  top: 52px;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+.top-line {
+  width: 80px;
+  height: 1px;
+  background: rgba(180,230,100,0.3);
+}
+.top-text {
+  font-size: 11px;
+  letter-spacing: 4px;
+  color: rgba(180,230,100,0.5);
+  text-transform: uppercase;
+}
+
+/* Logo */
+.logo {
+  font-size: 96px;
+  font-weight: 900;
+  letter-spacing: 20px;
+  color: #b4e664;
+  line-height: 1;
+  text-align: center;
+  position: relative;
+  z-index: 10;
+  text-shadow: 0 0 60px rgba(180,230,100,0.3);
+}
+
+/* Divider */
+.divider {
+  width: 1px;
+  height: 40px;
+  background: linear-gradient(transparent, rgba(180,230,100,0.4), transparent);
+  margin: 32px 0;
+  position: relative;
+  z-index: 10;
+}
+
+/* Philosophy */
+.philosophy {
+  font-size: 28px;
+  font-weight: 300;
+  color: #eef2e8;
+  letter-spacing: 3px;
+  text-align: center;
+  line-height: 1.8;
+  position: relative;
+  z-index: 10;
+}
+.philosophy strong {
+  color: #b4e664;
+  font-weight: 600;
+}
+
+/* Sub */
+.sub {
+  margin-top: 24px;
+  font-size: 13px;
+  color: rgba(180,230,100,0.45);
+  letter-spacing: 2px;
+  text-align: center;
+  position: relative;
+  z-index: 10;
+}
+
+/* Bottom */
+.bottom {
+  position: absolute;
+  bottom: 48px;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+.bottom-line {
+  flex: 1;
+  max-width: 180px;
+  height: 1px;
+  background: rgba(180,230,100,0.15);
+}
+.bottom-text {
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: rgba(180,230,100,0.3);
+}
+
+/* Score mock */
+.score-mock {
+  position: absolute;
+  right: 60px;
+  top: 50%;
+  transform: translateY(-50%);
+  text-align: right;
+  z-index: 10;
+}
+.score-value {
+  font-size: 48px;
+  font-weight: 700;
+  color: rgba(180,230,100,0.15);
+  letter-spacing: 2px;
+  line-height: 1;
+}
+.score-label {
+  font-size: 9px;
+  color: rgba(180,230,100,0.12);
+  letter-spacing: 3px;
+}
+
+.score-mock-left {
+  position: absolute;
+  left: 60px;
+  top: 50%;
+  transform: translateY(-50%);
+  text-align: left;
+  z-index: 10;
+}
+</style>
+</head>
+<body>
+<div class="canvas">
+  <div class="grid"></div>
+
+  <!-- Concentric circles -->
+  <div class="circles">
+    <div class="circle" style="width:900px;height:900px;"></div>
+    <div class="circle" style="width:700px;height:700px;"></div>
+    <div class="circle" style="width:500px;height:500px;opacity:0.5"></div>
+    <div class="circle" style="width:300px;height:300px;opacity:0.3"></div>
+    <div class="circle" style="width:140px;height:140px;opacity:0.2"></div>
+  </div>
+
+  <!-- Score decorations -->
+  <div class="score-mock">
+    <div class="score-value">12.4</div>
+    <div class="score-label">KM EXPLORED</div>
+  </div>
+  <div class="score-mock-left">
+    <div class="score-value" style="text-align:left">1,483</div>
+    <div class="score-label">TERRA SCORE</div>
+  </div>
+
+  <!-- Top label -->
+  <div class="top-label">
+    <div class="top-line"></div>
+    <div class="top-text">Human Performance</div>
+    <div class="top-line"></div>
+  </div>
+
+  <!-- Logo -->
+  <div class="logo">TERRA</div>
+
+  <!-- Divider -->
+  <div class="divider"></div>
+
+  <!-- Philosophy -->
+  <div class="philosophy">
+    <strong>身体</strong>が動くほど、<br><strong>世界</strong>が広がる
+  </div>
+
+  <div class="sub">GPS × BODY SCORE × MAP</div>
+
+  <!-- Bottom -->
+  <div class="bottom">
+    <div class="bottom-line"></div>
+    <div class="bottom-text">clapyourhouse.github.io/terra</div>
+    <div class="bottom-line"></div>
+  </div>
+</div>
+</body>
+</html>
