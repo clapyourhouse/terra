@@ -453,12 +453,25 @@ let startTime      = null;
 let timerInt       = null;
 let totalDist      = 0;
 let lastMilestone  = 0;
-let exploredCells  = new Set(); // "lat3,lng3" 形式、約100m単位
+let unlockedZones  = new Map(); // zoneKey → 地名（例："西新宿"）
 let streakDays     = 0;
 
-// ─── Grid cell (約100m) ──────────────────────────────────────
-function posToCell(lat, lng) {
-  return `${(lat * 1000 | 0)},${(lng * 1000 | 0)}`;
+// ─── Zone (約500m×500m) ──────────────────────────────────────
+function posToZone(lat, lng) {
+  return `${Math.floor(lat / 0.0045)},${Math.floor(lng / 0.005)}`;
+}
+
+// ─── 逆ジオコーディング（OpenStreetMap Nominatim・無料）────────
+async function fetchZoneName(lat, lng) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ja`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    const a    = data.address || {};
+    return a.neighbourhood || a.suburb || a.quarter || a.city_district || a.county || '未知の地';
+  } catch(e) {
+    return '未知の地';
+  }
 }
 
 // ─── 連続日数 ────────────────────────────────────────────────
@@ -491,15 +504,15 @@ function saveStreak() {
 
 // ─── ミッション定義 ──────────────────────────────────────────
 const MISSIONS = [
-  { label: '身体が目覚めた',          hint: '300m歩く',    check: s => s.dist  >= 0.3  },
-  { label: '身体が温まった',          hint: '1km歩く',     check: s => s.dist  >= 1.0  },
-  { label: '視野が広がった',          hint: '5エリア探索', check: s => s.areas >= 5    },
-  { label: '地図が色づいた',          hint: '3km歩く',     check: s => s.dist  >= 3.0  },
-  { label: '新しい街を発見した',      hint: '15エリア探索',check: s => s.areas >= 15   },
-  { label: '3日連続で外に出た',       hint: '3日続ける',   check: s => s.streak >= 3   },
-  { label: '身体が地図を塗り替えた',  hint: '30エリア探索',check: s => s.areas >= 30   },
-  { label: '習慣になった',            hint: '7日続ける',   check: s => s.streak >= 7   },
-  { label: '世界が広がった',          hint: '10km歩く',    check: s => s.dist  >= 10.0 },
+  { label: '身体が目覚めた',          hint: '300m歩く',      check: s => s.dist   >= 0.3  },
+  { label: '身体が温まった',          hint: '1km歩く',       check: s => s.dist   >= 1.0  },
+  { label: '視野が広がった',          hint: '3ゾーン解放',   check: s => s.zones  >= 3    },
+  { label: '地図が色づいた',          hint: '3km歩く',       check: s => s.dist   >= 3.0  },
+  { label: '新しい街を発見した',      hint: '5ゾーン解放',   check: s => s.zones  >= 5    },
+  { label: '3日連続で外に出た',       hint: '3日続ける',     check: s => s.streak >= 3    },
+  { label: '身体が地図を塗り替えた',  hint: '10ゾーン解放',  check: s => s.zones  >= 10   },
+  { label: '習慣になった',            hint: '7日続ける',     check: s => s.streak >= 7    },
+  { label: '世界が広がった',          hint: '10km歩く',      check: s => s.dist   >= 10.0 },
 ];
 
 function updateMissions() {
@@ -514,7 +527,7 @@ function updateMissions() {
   }
   if (!tracking) {
     // 前回データあり・停止中
-    const s2 = { dist: totalDist, areas: exploredCells.size, streak: streakDays };
+    const s2 = { dist: totalDist, zones: unlockedZones.size, streak: streakDays };
     const next2 = MISSIONS.find(m => !m.check(s2));
     doneEl.innerHTML = '';
     nextEl.innerHTML = next2
@@ -523,7 +536,7 @@ function updateMissions() {
     return;
   }
 
-  const s = { dist: totalDist, areas: exploredCells.size, streak: streakDays };
+  const s = { dist: totalDist, zones: unlockedZones.size, streak: streakDays };
   const done  = MISSIONS.filter(m => m.check(s));
   const next  = MISSIONS.find(m => !m.check(s));
 
@@ -545,17 +558,20 @@ function loadSavedTrack() {
   loadStreak();
   try {
     const saved = JSON.parse(localStorage.getItem('terra_track') || '[]');
-    const savedCells = JSON.parse(localStorage.getItem('terra_cells') || '[]');
-    exploredCells = new Set(savedCells);
+    const savedZones = JSON.parse(localStorage.getItem('terra_zones') || '[]');
+    unlockedZones = new Map(savedZones);
 
     if (saved.length > 1) {
       positions = saved;
       for (let i = 1; i < saved.length; i++) {
         totalDist += haversine(saved[i-1], saved[i]);
       }
-      // セルが未保存の場合は軌跡から再計算
-      if (exploredCells.size === 0) {
-        saved.forEach(ll => exploredCells.add(posToCell(ll[0], ll[1])));
+      // ゾーンが未保存の場合は軌跡から再計算（地名なし）
+      if (unlockedZones.size === 0) {
+        saved.forEach(ll => {
+          const zk = posToZone(ll[0], ll[1]);
+          if (!unlockedZones.has(zk)) unlockedZones.set(zk, '');
+        });
       }
       polyline = L.polyline(saved, { color: '#b4e664', weight: 3, opacity: 0.9 }).addTo(map);
       map.fitBounds(polyline.getBounds(), { padding: [40, 40] });
@@ -631,7 +647,7 @@ function stopTracking() {
   saveStreak();
   try {
     localStorage.setItem('terra_track', JSON.stringify(positions));
-    localStorage.setItem('terra_cells', JSON.stringify([...exploredCells]));
+    localStorage.setItem('terra_zones', JSON.stringify([...unlockedZones]));
   } catch(e) {}
   showToast('記録を保存しました');
   updateDisplay();
@@ -661,8 +677,17 @@ function onPosition(pos) {
   positions.push(ll);
   totalDist += d;
 
-  // セル記録
-  exploredCells.add(posToCell(ll[0], ll[1]));
+  // ゾーン記録（新ゾーンなら地名取得）
+  const zoneKey = posToZone(ll[0], ll[1]);
+  if (!unlockedZones.has(zoneKey)) {
+    unlockedZones.set(zoneKey, ''); // まず仮登録
+    fetchZoneName(ll[0], ll[1]).then(name => {
+      unlockedZones.set(zoneKey, name);
+      showToast(`🗺 ${name || '新エリア'}を解放！`);
+      updateDisplay();
+      try { localStorage.setItem('terra_zones', JSON.stringify([...unlockedZones])); } catch(e) {}
+    });
+  }
 
   // Redraw path
   if (polyline) map.removeLayer(polyline);
@@ -689,12 +714,12 @@ function onGpsError() { showToast('GPS取得中...'); }
 // ─── Display ─────────────────────────────────────────────────
 function updateDisplay() {
   document.getElementById('stat-dist').textContent   = totalDist.toFixed(2);
-  document.getElementById('stat-areas').textContent  = exploredCells.size;
+  document.getElementById('stat-areas').textContent  = unlockedZones.size;
   document.getElementById('stat-streak').textContent = streakDays > 0 ? '🔥' + streakDays : '0';
-  // スコア = 距離 × 50 + エリア × 20 + 連続日 × 30
+  // スコア = 距離 × 50 + ゾーン × 50 + 連続日 × 30
   document.getElementById('stat-score').textContent =
     positions.length === 0 ? '—'
-    : Math.floor(totalDist * 50 + exploredCells.size * 20 + streakDays * 30);
+    : Math.floor(totalDist * 50 + unlockedZones.size * 50 + streakDays * 30);
   updateMissions();
 }
 
