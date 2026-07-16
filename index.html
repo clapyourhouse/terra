@@ -189,9 +189,36 @@ body { display: flex; flex-direction: column; }
 .zone-hint {
   font-size: 10px;
   color: var(--accent);
-  opacity: 0.7;
-  margin-top: 5px;
+  opacity: 0.75;
+  margin-top: 6px;
   letter-spacing: 0.3px;
+}
+/* ── ゾーン探索率バー ── */
+.zone-progress-wrap {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.zone-progress-label {
+  font-size: 9px;
+  color: var(--sub);
+  letter-spacing: 1px;
+  white-space: nowrap;
+  min-width: 48px;
+}
+.zone-progress-bar {
+  flex: 1;
+  height: 3px;
+  background: rgba(180,230,100,0.12);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.zone-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.6s ease;
 }
 
 /* ── History button ── */
@@ -676,9 +703,17 @@ function updateMissions() {
   }
 
   if (next) {
-    const hint = getNextZoneHint();
-    const hintHtml = hint ? `<div class="zone-hint">📍 ${hint}</div>` : '';
-    nextEl.innerHTML = `→ ${next.label}<em>${next.hint}</em>${hintHtml}`;
+    const hint    = getNextZoneHint();
+    const hintHtml = hint ? `<div class="zone-hint">${hint}</div>` : '';
+    const pct     = tracking ? getCurrentZoneCoverage() : 0;
+    const zKey    = lastKnownPos ? posToZone(lastKnownPos[0], lastKnownPos[1]) : null;
+    const zName   = (zKey && unlockedZones.get(zKey)?.name) || 'このエリア';
+    const barHtml = tracking ? `
+      <div class="zone-progress-wrap">
+        <div class="zone-progress-label">${zName} ${pct}%</div>
+        <div class="zone-progress-bar"><div class="zone-progress-fill" style="width:${pct}%"></div></div>
+      </div>` : '';
+    nextEl.innerHTML = `→ ${next.label}<em>${next.hint}</em>${barHtml}${hintHtml}`;
   } else {
     nextEl.innerHTML = '🌍 すべてのミッション達成';
   }
@@ -941,28 +976,54 @@ function showZoneUnlock(name) {
   }, 2600);
 }
 
+// ─── 現在ゾーン探索率 ────────────────────────────────────────
+const ZONE_GRID = 9; // ゾーンを9×9=81マスに分割（1マス≈55m）
+
+function getCurrentZoneCoverage() {
+  if (!lastKnownPos || positions.length === 0) return 0;
+  const [lat, lng] = lastKnownPos;
+  const zLat = Math.floor(lat / 0.0045);
+  const zLng = Math.floor(lng / 0.005);
+  const cellLatSize = 0.0045 / ZONE_GRID;
+  const cellLngSize = 0.005  / ZONE_GRID;
+
+  const visited = new Set();
+  positions.forEach(ll => {
+    const cy = Math.floor((ll[0] - zLat * 0.0045) / cellLatSize);
+    const cx = Math.floor((ll[1] - zLng * 0.005)  / cellLngSize);
+    // 100m ≈ 1.8マス → 半径2マスをマーク
+    for (let dy = -2; dy <= 2; dy++) {
+      for (let dx = -2; dx <= 2; dx++) {
+        const y = cy + dy, x = cx + dx;
+        if (y >= 0 && y < ZONE_GRID && x >= 0 && x < ZONE_GRID) {
+          visited.add(`${y},${x}`);
+        }
+      }
+    }
+  });
+  return Math.min(100, Math.round(visited.size / (ZONE_GRID * ZONE_GRID) * 100));
+}
+
 // ─── 次エリア誘導ヒント ──────────────────────────────────────
 function getNextZoneHint() {
   if (!lastKnownPos) return null;
   const [lat, lng] = lastKnownPos;
   const zLat = Math.floor(lat / 0.0045);
   const zLng = Math.floor(lng / 0.005);
-  // 現在ゾーン内の位置（端からどれくらいか）
-  const fracLat = (lat / 0.0045) - zLat; // 0〜1
+  const fracLat = (lat / 0.0045) - zLat;
   const fracLng = (lng / 0.005)  - zLng;
-  // 最も近い未探索方向を探す
   const candidates = [
-    { dy:  1, dx:  0, label: '北', dist: (1 - fracLat) * 500 },
-    { dy: -1, dx:  0, label: '南', dist: fracLat * 500 },
-    { dy:  0, dx:  1, label: '東', dist: (1 - fracLng) * 500 },
-    { dy:  0, dx: -1, label: '西', dist: fracLng * 500 },
+    { dy:  1, dx:  0, label: '北', dist: Math.round((1 - fracLat) * 450 / 50) * 50 },
+    { dy: -1, dx:  0, label: '南', dist: Math.round(fracLat * 450 / 50) * 50 },
+    { dy:  0, dx:  1, label: '東', dist: Math.round((1 - fracLng) * 500 / 50) * 50 },
+    { dy:  0, dx: -1, label: '西', dist: Math.round(fracLng * 500 / 50) * 50 },
   ];
   const unvisited = candidates
     .filter(c => !unlockedZones.has(`${zLat + c.dy},${zLng + c.dx}`))
     .sort((a, b) => a.dist - b.dist);
   if (unvisited.length === 0) return null;
-  const nearest = unvisited[0];
-  return `${nearest.label}へ約${Math.round(nearest.dist / 100) * 100}m — 新しいエリアがある`;
+  const n = unvisited[0];
+  return `📍 ${n.label}へ約${n.dist}m、まだ霧に包まれた街がある`;
 }
 
 // ─── SNS共有 ─────────────────────────────────────────────────
