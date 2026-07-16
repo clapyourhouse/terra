@@ -355,8 +355,11 @@ function metersToPixels(lat, lng) {
 
 function resizeFog() {
   const wrap = document.getElementById('map-wrap');
-  fogCanvas.width  = wrap.offsetWidth;
-  fogCanvas.height = wrap.offsetHeight;
+  const w = wrap.offsetWidth;
+  const h = wrap.offsetHeight;
+  if (!w || !h) { requestAnimationFrame(resizeFog); return; } // レイアウト未確定なら再試行
+  fogCanvas.width  = w;
+  fogCanvas.height = h;
   drawFog();
 }
 
@@ -365,29 +368,36 @@ function drawFog() {
   const h = fogCanvas.height;
   if (!w || !h) return;
   fogCtx.clearRect(0, 0, w, h);
-
-  // Dark dungeon fill
   fogCtx.fillStyle = `rgba(4, 8, 4, ${FOG_ALPHA})`;
-  fogCtx.fillRect(0, 0, w, h);
 
-  if (positions.length === 0) return;
+  if (positions.length === 0) {
+    fogCtx.fillRect(0, 0, w, h);
+    return;
+  }
 
-  // Cut holes where walked
-  fogCtx.globalCompositeOperation = 'destination-out';
+  // ── evenodd で穴あき霧を描く（destination-out不要・iOS Safari対応）──
+  fogCtx.beginPath();
+  fogCtx.rect(0, 0, w, h); // 外枠（時計回り）
   positions.forEach(ll => {
     const pt = map.latLngToContainerPoint(L.latLng(ll[0], ll[1]));
-    const r  = metersToPixels(ll[0], ll[1]); // ズームに連動したピクセル半径
-    const g  = fogCtx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, r);
-    g.addColorStop(0,    'rgba(0,0,0,1)');
-    g.addColorStop(0.55, 'rgba(0,0,0,0.85)');
-    g.addColorStop(0.85, 'rgba(0,0,0,0.2)');
-    g.addColorStop(1,    'rgba(0,0,0,0)');
+    const r  = metersToPixels(ll[0], ll[1]);
+    fogCtx.moveTo(pt.x + r, pt.y);
+    fogCtx.arc(pt.x, pt.y, r, 0, Math.PI * 2, true); // 反時計回り＝穴
+  });
+  fogCtx.fill('evenodd');
+
+  // ── 穴の縁にグラデーションで暗くする（ダンジョン感）──
+  positions.forEach(ll => {
+    const pt = map.latLngToContainerPoint(L.latLng(ll[0], ll[1]));
+    const r  = metersToPixels(ll[0], ll[1]);
+    const g  = fogCtx.createRadialGradient(pt.x, pt.y, r * 0.35, pt.x, pt.y, r * 1.05);
+    g.addColorStop(0, 'rgba(4,8,4,0)');
+    g.addColorStop(1, `rgba(4,8,4,${FOG_ALPHA})`);
     fogCtx.fillStyle = g;
     fogCtx.beginPath();
-    fogCtx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+    fogCtx.arc(pt.x, pt.y, r * 1.05, 0, Math.PI * 2);
     fogCtx.fill();
   });
-  fogCtx.globalCompositeOperation = 'source-over';
 }
 
 map.on('move zoom viewreset', drawFog);
@@ -493,12 +503,19 @@ const MISSIONS = [
 ];
 
 function updateMissions() {
+  const doneEl = document.getElementById('mission-done');
+  const nextEl = document.getElementById('mission-next');
+
+  // ③ 初回：まだ歩いていない
+  if (positions.length === 0) {
+    doneEl.innerHTML = '';
+    nextEl.innerHTML = 'START を押して、霧の中を歩き出そう';
+    return;
+  }
+
   const s = { dist: totalDist, areas: exploredCells.size, streak: streakDays };
   const done  = MISSIONS.filter(m => m.check(s));
   const next  = MISSIONS.find(m => !m.check(s));
-
-  const doneEl = document.getElementById('mission-done');
-  const nextEl = document.getElementById('mission-next');
 
   if (done.length > 0) {
     doneEl.innerHTML = done.slice(-2).map(m => `<span>✓</span>${m.label}`).join('　');
@@ -567,7 +584,7 @@ function startTracking() {
   // 記録復元後に広域表示になっている場合、ズームを戻す
   if (map.getZoom() < 16) map.setZoom(16);
 
-  document.getElementById('btn-main').textContent = 'STOP';
+  document.getElementById('btn-main').textContent = '探索を終える';
   document.getElementById('btn-main').classList.add('tracking');
   document.getElementById('dot').classList.add('active');
   document.getElementById('status-text').textContent = 'TRACKING';
@@ -652,7 +669,7 @@ function onGpsError() { showToast('GPS取得中...'); }
 function updateDisplay() {
   document.getElementById('stat-dist').textContent   = totalDist.toFixed(2);
   document.getElementById('stat-areas').textContent  = exploredCells.size;
-  document.getElementById('stat-streak').textContent = streakDays;
+  document.getElementById('stat-streak').textContent = streakDays > 0 ? '🔥' + streakDays : '0';
   // スコア = 距離 × 50 + エリア × 20 + 連続日 × 30
   document.getElementById('stat-score').textContent =
     positions.length === 0 ? '—'
