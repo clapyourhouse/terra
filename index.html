@@ -348,6 +348,7 @@ body { display: flex; flex-direction: column; }
   opacity: 0;
   transition: opacity 0.35s;
   pointer-events: none;
+  flex-direction: column;
   -webkit-transform: translateZ(0); /* iOS Safari GPU合成強制 */
   transform: translateZ(0);
 }
@@ -366,6 +367,52 @@ body { display: flex; flex-direction: column; }
   letter-spacing: 4px;
   margin-top: 10px;
   text-transform: uppercase;
+}
+/* ── アフィリエイトカード（ゾーン解放Stage2）── */
+#zone-affiliate {
+  display: none;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20px 24px 40px;
+  background: linear-gradient(to top, rgba(4,8,4,1) 0%, rgba(4,8,4,0.98) 70%, transparent 100%);
+  transform: translateY(16px);
+  opacity: 0;
+  transition: transform 0.4s ease, opacity 0.4s ease;
+}
+#zone-affiliate.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+#zone-affiliate-label {
+  font-size: 9px;
+  color: var(--sub);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+#zone-affiliate-btn {
+  display: block;
+  padding: 16px 20px;
+  background: var(--accent);
+  color: #080f08;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-decoration: none;
+  border-radius: 6px;
+  margin-bottom: 14px;
+}
+#zone-close {
+  font-size: 11px;
+  color: var(--sub);
+  letter-spacing: 2px;
+  cursor: pointer;
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  font-family: inherit;
 }
 
 /* ── Toast ── */
@@ -528,6 +575,12 @@ body.run-mode .btn-mode {
     <div id="zone-emoji">🗺</div>
     <div id="zone-name-big"></div>
     <div id="zone-label">を解放した</div>
+  </div>
+  <!-- Stage2: アフィリエイトカード -->
+  <div id="zone-affiliate">
+    <div id="zone-affiliate-label">このエリアを走る装備を揃える</div>
+    <a id="zone-affiliate-btn" href="#" target="_blank" rel="noopener">Amazonで探す →</a>
+    <button id="zone-close" onclick="closeZoneOverlay()">閉じる</button>
   </div>
 </div>
 
@@ -1181,17 +1234,51 @@ function hideHistory() {
 }
 
 // ─── ゾーン解放 全画面演出 ──────────────────────────────────
-let zoneOverlayTimer = null;
+// ★ Amazon Associates タグ（承認後に実際のIDに変更）
+const AMAZON_TAG = 'YOUR_TAG-22'; // ← ここを自分のタグIDに変更する
+
+let zoneOverlayTimer  = null;
+let zoneAffTimer      = null;
+
 function showZoneUnlock(name) {
-  const el = document.getElementById('zone-overlay');
+  const el    = document.getElementById('zone-overlay');
+  const affEl = document.getElementById('zone-affiliate');
+
+  // リセット
+  clearTimeout(zoneOverlayTimer);
+  clearTimeout(zoneAffTimer);
+  affEl.classList.remove('show');
+  affEl.style.display = 'none';
+  el.style.pointerEvents = 'none';
+
+  // Stage1: 演出表示
   document.getElementById('zone-name-big').textContent = name;
   el.style.display = 'flex';
   requestAnimationFrame(() => el.classList.add('show'));
+
+  // Stage2: 2秒後にアフィリエイトカード表示
+  zoneAffTimer = setTimeout(() => {
+    const keyword = encodeURIComponent('ランニング 装備');
+    document.getElementById('zone-affiliate-btn').href =
+      `https://www.amazon.co.jp/s?k=${keyword}&tag=${AMAZON_TAG}`;
+    affEl.style.display = 'block';
+    el.style.pointerEvents = 'auto'; // タップ可能に
+    requestAnimationFrame(() => affEl.classList.add('show'));
+  }, 2000);
+}
+
+function closeZoneOverlay() {
   clearTimeout(zoneOverlayTimer);
-  zoneOverlayTimer = setTimeout(() => {
-    el.classList.remove('show');
-    setTimeout(() => { el.style.display = 'none'; }, 380);
-  }, 2600);
+  clearTimeout(zoneAffTimer);
+  const el    = document.getElementById('zone-overlay');
+  const affEl = document.getElementById('zone-affiliate');
+  affEl.classList.remove('show');
+  el.classList.remove('show');
+  setTimeout(() => {
+    el.style.display  = 'none';
+    affEl.style.display = 'none';
+    el.style.pointerEvents = 'none';
+  }, 380);
 }
 
 // ─── 現在ゾーン探索率 ────────────────────────────────────────
