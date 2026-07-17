@@ -661,39 +661,32 @@ let locationMarker = null;
 let headingMarker  = null;
 
 function updateLocationMarker(ll, heading) {
-  // Location dot
-  const dotIcon = L.divIcon({
-    className: '',
-    html: '<div class="location-dot"></div>',
-    iconSize: [16, 16],
-    iconAnchor: [8, 8],
-  });
-
-  if (!locationMarker) {
-    locationMarker = L.marker(ll, { icon: dotIcon, zIndexOffset: 1000 }).addTo(map);
-  } else {
-    locationMarker.setLatLng(ll);
-  }
-
-  // Heading cone (only if heading is available and reliable)
+  // locationMarker と headingMarker を1つのマーカーに統合（二重点を防ぐ）
+  let html;
   if (heading !== null && heading !== undefined && !isNaN(heading)) {
-    const coneHtml = `<div style="
-      width:16px;height:16px;position:relative;
+    html = `<div style="width:16px;height:32px;position:relative;
       transform:rotate(${heading}deg);transform-origin:8px 24px;">
       <div class="heading-cone"></div>
       <div class="location-dot" style="position:absolute;top:8px;left:0;"></div>
     </div>`;
-    const coneIcon = L.divIcon({
-      className: '',
-      html: coneHtml,
-      iconSize: [16, 32],
-      iconAnchor: [8, 24],
-    });
-    if (!headingMarker) {
-      headingMarker = L.marker(ll, { icon: coneIcon, zIndexOffset: 999 }).addTo(map);
-    } else {
-      headingMarker.setLatLng(ll).setIcon(coneIcon);
-    }
+  } else {
+    html = '<div class="location-dot"></div>';
+  }
+  const icon = L.divIcon({
+    className: '',
+    html,
+    iconSize: [16, heading != null && !isNaN(heading) ? 32 : 16],
+    iconAnchor: [8, heading != null && !isNaN(heading) ? 24 : 8],
+  });
+  if (!locationMarker) {
+    locationMarker = L.marker(ll, { icon, zIndexOffset: 1000 }).addTo(map);
+  } else {
+    locationMarker.setLatLng(ll).setIcon(icon);
+  }
+  // headingMarkerは不要になったので削除
+  if (headingMarker) {
+    map.removeLayer(headingMarker);
+    headingMarker = null;
   }
 }
 
@@ -958,15 +951,18 @@ function stopTracking() {
 
 // ─── GPS callback ─────────────────────────────────────────────
 function onPosition(pos) {
-  const ll      = [pos.coords.latitude, pos.coords.longitude];
-  const heading = pos.coords.heading;
+  const ll       = [pos.coords.latitude, pos.coords.longitude];
+  const heading  = pos.coords.heading;
+  const accuracy = pos.coords.accuracy;  // 精度（メートル）
+  const speed    = pos.coords.speed;     // 速度（m/s）、nullの場合あり
 
-  // 現在地を保持
+  // 現在地マーカーは常に更新（精度に関わらず表示はする）
   lastKnownPos = ll;
-
-  // Always update location marker
   updateLocationMarker(ll, heading);
 
+  if (!tracking) return; // トラッキング中でなければ距離は計測しない
+
+  // 初回ポジション: ノイズフィルターなしで起点を確定
   if (positions.length === 0) {
     map.setView(ll, 17);
     positions.push(ll);
@@ -974,8 +970,16 @@ function onPosition(pos) {
     return;
   }
 
+  // ── ノイズフィルター（2回目以降）────────────────────────
+  // 1. GPS精度が悪い場合はスキップ（室内・ビル影など）
+  if (accuracy > 20) return; // 精度20m超 = ノイズとみなす
+
+  // 2. 速度が極端に遅い場合はスキップ（静止中のGPSドリフト対策）
+  //    0.4m/s ≈ 1.4km/h（歩行最低速度以下）
+  if (speed !== null && speed < 0.4) return;
+
   const d = haversine(positions[positions.length - 1], ll);
-  if (d < 0.003) return; // < 3m noise
+  if (d < 0.008) return; // < 8m は移動とみなさない（旧3m→8mに拡大）
 
   positions.push(ll);
   totalDist += d;
