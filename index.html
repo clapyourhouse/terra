@@ -596,21 +596,54 @@ function drawFog() {
   drawUnknownZonePins();
 }
 
-// 未解放ゾーンの「？」ラベルを霧キャンバスに直接描く
+// ゾーン名・未解放ピンを霧キャンバスに直接描く（常に霧の上に表示）
 function drawUnknownZonePins() {
   const w = fogCanvas.width;
   const h = fogCanvas.height;
-  if (!w || !h || unlockedZones.size === 0) return;
-
-  const drawn = new Set();
-  const dirs = [{dy:1,dx:0},{dy:-1,dx:0},{dy:0,dx:1},{dy:0,dx:-1}];
+  if (!w || !h) return;
 
   fogCtx.save();
-  fogCtx.font = 'bold 10px -apple-system, sans-serif';
   fogCtx.textAlign = 'center';
   fogCtx.textBaseline = 'middle';
 
+  // ── Pass 0: 解放済みゾーン名ラベル（霧の上に常時表示）────────
+  fogCtx.font = '9px -apple-system, sans-serif';
+  unlockedZones.forEach((zoneData, key) => {
+    const name = zoneData.name;
+    if (!name) return;
+    const [gy, gx] = key.split(',').map(Number);
+    const lat = (gy + 0.5) * 0.0045;
+    const lng = (gx + 0.5) * 0.005;
+    const pt = map.latLngToContainerPoint(L.latLng(lat, lng));
+    if (pt.x < -60 || pt.x > w + 60 || pt.y < -20 || pt.y > h + 20) return;
+    const tw = Math.max(fogCtx.measureText(name).width + 12, 30);
+    const th = 13, cr = 2;
+    const x = pt.x - tw / 2, y = pt.y - th / 2;
+    fogCtx.fillStyle = 'rgba(180,230,100,0.1)';
+    fogCtx.strokeStyle = 'rgba(180,230,100,0.3)';
+    fogCtx.lineWidth = 0.8;
+    fogCtx.beginPath();
+    fogCtx.moveTo(x + cr, y); fogCtx.lineTo(x + tw - cr, y);
+    fogCtx.arcTo(x + tw, y, x + tw, y + cr, cr);
+    fogCtx.lineTo(x + tw, y + th - cr);
+    fogCtx.arcTo(x + tw, y + th, x + tw - cr, y + th, cr);
+    fogCtx.lineTo(x + cr, y + th);
+    fogCtx.arcTo(x, y + th, x, y + th - cr, cr);
+    fogCtx.lineTo(x, y + cr);
+    fogCtx.arcTo(x, y, x + cr, y, cr);
+    fogCtx.closePath();
+    fogCtx.fill(); fogCtx.stroke();
+    fogCtx.fillStyle = 'rgba(180,230,100,0.85)';
+    fogCtx.fillText(name, pt.x, pt.y);
+  });
+
+  if (unlockedZones.size === 0) { fogCtx.restore(); return; }
+
   // ── Pass 1: 隣接ゾーン（1歩先）→「？」バッジ ──────────────
+  const dirs = [{dy:1,dx:0},{dy:-1,dx:0},{dy:0,dx:1},{dy:0,dx:-1}];
+  const drawn = new Set();
+  fogCtx.font = 'bold 10px -apple-system, sans-serif';
+
   unlockedZones.forEach((_, key) => {
     const [gy, gx] = key.split(',').map(Number);
     dirs.forEach(d => {
@@ -621,15 +654,13 @@ function drawUnknownZonePins() {
         const lng = (gx + d.dx + 0.5) * 0.005;
         const pt = map.latLngToContainerPoint(L.latLng(lat, lng));
         if (pt.x < -20 || pt.x > w + 20 || pt.y < -20 || pt.y > h + 20) return;
-
         const tw = 22, th = 14, cr = 3;
         const x = pt.x - tw / 2, y = pt.y - th / 2;
         fogCtx.fillStyle = 'rgba(60,80,55,0.55)';
         fogCtx.strokeStyle = 'rgba(106,122,90,0.55)';
         fogCtx.lineWidth = 1;
         fogCtx.beginPath();
-        fogCtx.moveTo(x + cr, y);
-        fogCtx.lineTo(x + tw - cr, y);
+        fogCtx.moveTo(x + cr, y); fogCtx.lineTo(x + tw - cr, y);
         fogCtx.arcTo(x + tw, y, x + tw, y + cr, cr);
         fogCtx.lineTo(x + tw, y + th - cr);
         fogCtx.arcTo(x + tw, y + th, x + tw - cr, y + th, cr);
@@ -638,39 +669,53 @@ function drawUnknownZonePins() {
         fogCtx.lineTo(x, y + cr);
         fogCtx.arcTo(x, y, x + cr, y, cr);
         fogCtx.closePath();
-        fogCtx.fill();
-        fogCtx.stroke();
+        fogCtx.fill(); fogCtx.stroke();
         fogCtx.fillStyle = 'rgba(155,170,130,0.8)';
-        fogCtx.fillText('？', pt.x, pt.y + 0.5);
+        fogCtx.fillText('?', pt.x, pt.y + 0.5);
       }
     });
   });
 
-  // ── Pass 2: 遠方ゾーン（2〜4歩先）→ 小さな薄い点 ──────────
-  const drawnFar = new Set(drawn);
-  unlockedZones.forEach((_, key) => {
-    const [gy, gx] = key.split(',').map(Number);
-    for (let dy = -4; dy <= 4; dy++) {
-      for (let dx = -4; dx <= 4; dx++) {
-        const dist = Math.abs(dy) + Math.abs(dx);
-        if (dist < 2 || dist > 4) continue;
-        const nKey = `${gy + dy},${gx + dx}`;
-        if (unlockedZones.has(nKey) || drawnFar.has(nKey)) continue;
-        drawnFar.add(nKey);
-        const lat = (gy + dy + 0.5) * 0.0045;
-        const lng = (gx + dx + 0.5) * 0.005;
-        const pt = map.latLngToContainerPoint(L.latLng(lat, lng));
-        if (pt.x < 0 || pt.x > w || pt.y < 0 || pt.y > h) continue;
-        // 遠いほど薄く・小さく
-        const opacity = dist === 2 ? 0.28 : dist === 3 ? 0.18 : 0.10;
-        const radius  = dist === 2 ? 3.5  : dist === 3 ? 2.5  : 1.8;
-        fogCtx.fillStyle = `rgba(106,122,90,${opacity})`;
-        fogCtx.beginPath();
-        fogCtx.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
-        fogCtx.fill();
-      }
-    }
-  });
+  // ── Pass 2: 現在地から4方向・2〜3ゾーン先の遠方ヒント ────────
+  // 格子点ではなく「進める方向」を示す少数のピン
+  if (lastKnownPos) {
+    const curGy = Math.floor(lastKnownPos[0] / 0.0045);
+    const curGx = Math.floor(lastKnownPos[1] / 0.005);
+    const farDirs = [
+      {dy:2,dx:0},{dy:-2,dx:0},{dy:0,dx:2},{dy:0,dx:-2},
+      {dy:3,dx:0},{dy:-3,dx:0},{dy:0,dx:3},{dy:0,dx:-3},
+    ];
+    fogCtx.font = 'bold 8px -apple-system, sans-serif';
+    farDirs.forEach(d => {
+      const dist = Math.abs(d.dy) + Math.abs(d.dx);
+      const nKey = `${curGy + d.dy},${curGx + d.dx}`;
+      if (unlockedZones.has(nKey) || drawn.has(nKey)) return;
+      const lat = (curGy + d.dy + 0.5) * 0.0045;
+      const lng = (curGx + d.dx + 0.5) * 0.005;
+      const pt = map.latLngToContainerPoint(L.latLng(lat, lng));
+      if (pt.x < -5 || pt.x > w + 5 || pt.y < -5 || pt.y > h + 5) return;
+      const alpha = dist === 2 ? 0.28 : 0.14;
+      const tw = 18, th = 11, cr = 2;
+      const x = pt.x - tw / 2, y = pt.y - th / 2;
+      fogCtx.fillStyle = `rgba(50,70,45,${alpha})`;
+      fogCtx.strokeStyle = `rgba(90,110,75,${alpha})`;
+      fogCtx.lineWidth = 0.8;
+      fogCtx.beginPath();
+      fogCtx.moveTo(x + cr, y); fogCtx.lineTo(x + tw - cr, y);
+      fogCtx.arcTo(x + tw, y, x + tw, y + cr, cr);
+      fogCtx.lineTo(x + tw, y + th - cr);
+      fogCtx.arcTo(x + tw, y + th, x + tw - cr, y + th, cr);
+      fogCtx.lineTo(x + cr, y + th);
+      fogCtx.arcTo(x, y + th, x, y + th - cr, cr);
+      fogCtx.lineTo(x, y + cr);
+      fogCtx.arcTo(x, y, x + cr, y, cr);
+      fogCtx.closePath();
+      fogCtx.fill(); fogCtx.stroke();
+      fogCtx.fillStyle = `rgba(130,150,110,${alpha * 1.5})`;
+      fogCtx.fillText('?', pt.x, pt.y + 0.5);
+    });
+  }
+
   fogCtx.restore();
 }
 
@@ -1255,37 +1300,10 @@ function copyToClipboard(text) {
 }
 
 // ─── ゾーンピン ──────────────────────────────────────────────
-const zonePinMarkers   = new Map(); // zoneKey → L.marker（地名）
-const unknownPinMarkers = new Map(); // zoneKey → L.marker（？）
-
+// ゾーン名ラベル・？ピンはすべて drawUnknownZonePins() でcanvasに直接描画
+// （Leafletマーカーは霧canvasの下に入るため廃止）
 function updateZonePins() {
-  // 解放ゾーン: 地名ピン
-  unlockedZones.forEach((zoneData, key) => {
-    const name = zoneData.name || '？';
-    if (!zonePinMarkers.has(key)) {
-      const [gy, gx] = key.split(',').map(Number);
-      const lat = (gy + 0.5) * 0.0045;
-      const lng = (gx + 0.5) * 0.005;
-      const icon = L.divIcon({
-        className: '',
-        html: `<div class="zone-pin">${name}</div>`,
-        iconSize: [0, 0],
-        iconAnchor: [0, 0],
-      });
-      zonePinMarkers.set(key, L.marker([lat, lng], { icon, interactive: false, zIndexOffset: 500 }).addTo(map));
-    } else {
-      // 地名が後から解決した場合アイコンを更新
-      const marker = zonePinMarkers.get(key);
-      const prev = marker.getIcon().options.html;
-      const next = `<div class="zone-pin">${name}</div>`;
-      if (prev !== next) {
-        marker.setIcon(L.divIcon({ className: '', html: next, iconSize: [0,0], iconAnchor: [0,0] }));
-      }
-    }
-  });
-
-  // 隣接する未解放ゾーンの「？」ピンはdrawFog()内のdrawUnknownZonePins()で描画
-  // （霧キャンバスの上に直接描くことでz-index問題を回避）
+  drawFog(); // canvasを再描画すれば最新のゾーン状態が反映される
 }
 
 // ─── Milestone ───────────────────────────────────────────────
