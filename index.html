@@ -747,6 +747,7 @@ let lastMilestone  = 0;
 let unlockedZones  = new Map(); // zoneKey → {name, date}
 let zoneProgress   = new Map(); // zoneKey → そのゾーン内の移動距離（km）
 let lastKnownPos   = null;      // 現在地（drawUnknownZonePinsより前に宣言必須）
+let sessionStartPos = null;     // 今のセッションの最初のポジション（nullなら未記録）
 const ZONE_UNLOCK_DIST = 0.15;  // 150m 移動でゾーン解放
 let streakDays     = 0;
 let runMode        = false;
@@ -974,6 +975,7 @@ function startTracking() {
   tracking  = true;
   startTime = Date.now();
   if (runMode) { runDist = 0; } // ランモードは毎回リセット
+  sessionStartPos = null; // 新セッション開始：起点バイパスをリセット
   timerInt  = setInterval(updateTimer, 1000);
   // 記録復元後に広域表示になっている場合、ズームを戻す
   if (map.getZoom() < 16) map.setZoom(16);
@@ -1024,8 +1026,11 @@ function onPosition(pos) {
 
   if (!tracking) return; // トラッキング中でなければ距離は計測しない
 
-  // 初回ポジション: ノイズフィルターなしで起点を確定
-  if (positions.length === 0) {
+  // セッション最初のポジション: ノイズフィルターなしで起点を確定
+  // （保存済みトラックがある場合も positions.length > 0 になるため、
+  //   sessionStartPos フラグで判定する）
+  if (sessionStartPos === null) {
+    sessionStartPos = ll;
     map.setView(ll, 17);
     positions.push(ll);
     drawFog();
