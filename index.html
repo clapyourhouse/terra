@@ -396,6 +396,15 @@ body { display: flex; flex-direction: column; }
   line-height: 1;
   color: var(--text);
 }
+/* ── Run mode カラーテーマ ── */
+body.run-mode {
+  --accent: #ff9900;
+  --accent-dim: rgba(255,153,0,0.15);
+  --border: rgba(255,153,0,0.18);
+}
+body.run-mode .btn-mode {
+  border-color: rgba(255,153,0,0.5);
+}
 /* ── Zone pins ── */
 .zone-pin {
   background: rgba(180,230,100,0.08);
@@ -478,16 +487,18 @@ body { display: flex; flex-direction: column; }
 <div class="stats">
   <div class="stat">
     <div class="stat-value" id="stat-dist">0.00</div>
-    <div class="stat-unit">KM</div>
+    <div class="stat-unit" id="stat-dist-unit">KM</div>
   </div>
   <div class="stat" id="stat-b">
     <div class="stat-value" id="stat-b-val">0</div>
     <div class="stat-unit" id="stat-b-unit">連続日</div>
+    <div class="stat-unit" id="stat-b-sub" style="display:none;font-size:7px;opacity:0.6;margin-top:1px;">min/km</div>
   </div>
   <div class="stat" id="stat-c" style="display:none;border-right:none;">
     <div class="stat-value" id="stat-time">0:00</div>
     <div class="stat-unit">TIME</div>
   </div>
+
 </div>
 
 <div class="control">
@@ -559,34 +570,83 @@ function drawFog() {
   fogCtx.fillStyle = `rgba(4, 8, 4, ${FOG_ALPHA})`;
   fogCtx.fillRect(0, 0, w, h);
 
-  if (positions.length === 0) return;
+  if (positions.length === 0) {
+    drawUnknownZonePins();
+    return;
+  }
 
-  // 2. clip() で全円のunionを取ってクリア
-  //    nonzeroルール：重なっても正しくunion扱い（evenoddの重複バグなし）
+  // 2. destination-out で霧を削る（重なっても黒丸が残らない）
   fogCtx.save();
-  fogCtx.beginPath();
+  fogCtx.globalCompositeOperation = 'destination-out';
   positions.forEach(ll => {
     const pt = map.latLngToContainerPoint(L.latLng(ll[0], ll[1]));
     const r  = metersToPixels(ll[0], ll[1]);
-    fogCtx.moveTo(pt.x + r, pt.y);
-    fogCtx.arc(pt.x, pt.y, r, 0, Math.PI * 2); // 時計回り（デフォルト）
-  });
-  fogCtx.clip(); // clip内 = 歩いたエリア全体
-  fogCtx.clearRect(0, 0, w, h); // 地図を透過表示
-  fogCtx.restore();
-
-  // 3. 縁をグラデーションでぼかす（控えめに）
-  positions.forEach(ll => {
-    const pt = map.latLngToContainerPoint(L.latLng(ll[0], ll[1]));
-    const r  = metersToPixels(ll[0], ll[1]);
-    const g  = fogCtx.createRadialGradient(pt.x, pt.y, r * 0.85, pt.x, pt.y, r * 1.08);
-    g.addColorStop(0, 'rgba(4,8,4,0)');
-    g.addColorStop(1, `rgba(4,8,4,${FOG_ALPHA})`);
+    // 中心は完全透過、外縁に向かってフェード
+    const g = fogCtx.createRadialGradient(pt.x, pt.y, r * 0.55, pt.x, pt.y, r);
+    g.addColorStop(0, 'rgba(0,0,0,1)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
     fogCtx.fillStyle = g;
     fogCtx.beginPath();
-    fogCtx.arc(pt.x, pt.y, r * 1.08, 0, Math.PI * 2);
+    fogCtx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
     fogCtx.fill();
   });
+  fogCtx.restore();
+
+  // 3. 隣接ゾーン「？」ピンを霧の上に描画
+  drawUnknownZonePins();
+}
+
+// 未解放ゾーンの「？」ラベルを霧キャンバスに直接描く
+function drawUnknownZonePins() {
+  const w = fogCanvas.width;
+  const h = fogCanvas.height;
+  if (!w || !h || unlockedZones.size === 0) return;
+
+  const drawn = new Set();
+  const dirs = [{dy:1,dx:0},{dy:-1,dx:0},{dy:0,dx:1},{dy:0,dx:-1}];
+
+  fogCtx.save();
+  fogCtx.font = 'bold 10px -apple-system, sans-serif';
+  fogCtx.textAlign = 'center';
+  fogCtx.textBaseline = 'middle';
+
+  unlockedZones.forEach((_, key) => {
+    const [gy, gx] = key.split(',').map(Number);
+    dirs.forEach(d => {
+      const nKey = `${gy + d.dy},${gx + d.dx}`;
+      if (!unlockedZones.has(nKey) && !drawn.has(nKey)) {
+        drawn.add(nKey);
+        const lat = (gy + d.dy + 0.5) * 0.0045;
+        const lng = (gx + d.dx + 0.5) * 0.005;
+        const pt = map.latLngToContainerPoint(L.latLng(lat, lng));
+        if (pt.x < -20 || pt.x > w + 20 || pt.y < -20 || pt.y > h + 20) return;
+
+        const tw = 22, th = 14, r = 3;
+        const x = pt.x - tw / 2, y = pt.y - th / 2;
+        // 丸角矩形
+        fogCtx.fillStyle = 'rgba(60,80,55,0.55)';
+        fogCtx.strokeStyle = 'rgba(106,122,90,0.55)';
+        fogCtx.lineWidth = 1;
+        fogCtx.beginPath();
+        fogCtx.moveTo(x + r, y);
+        fogCtx.lineTo(x + tw - r, y);
+        fogCtx.arcTo(x + tw, y, x + tw, y + r, r);
+        fogCtx.lineTo(x + tw, y + th - r);
+        fogCtx.arcTo(x + tw, y + th, x + tw - r, y + th, r);
+        fogCtx.lineTo(x + r, y + th);
+        fogCtx.arcTo(x, y + th, x, y + th - r, r);
+        fogCtx.lineTo(x, y + r);
+        fogCtx.arcTo(x, y, x + r, y, r);
+        fogCtx.closePath();
+        fogCtx.fill();
+        fogCtx.stroke();
+
+        fogCtx.fillStyle = 'rgba(155,170,130,0.8)';
+        fogCtx.fillText('？', pt.x, pt.y + 0.5);
+      }
+    });
+  });
+  fogCtx.restore();
 }
 
 map.on('move zoom viewreset', drawFog);
@@ -645,6 +705,7 @@ let polyline       = null;
 let startTime      = null;
 let timerInt       = null;
 let totalDist      = 0;
+let runDist        = 0;   // ランモード：このランの距離（START毎にリセット）
 let lastMilestone  = 0;
 let unlockedZones  = new Map(); // zoneKey → 地名（例："西新宿"）
 let streakDays     = 0;
@@ -806,17 +867,24 @@ loadSavedTrack();
 
 // ─── モード切替 ──────────────────────────────────────────────
 function toggleMode() {
+  if (tracking) { showToast('停止中のみ切り替えられます'); return; }
   runMode = !runMode;
   document.getElementById('btn-mode').textContent = runMode ? '🏃' : '🚶';
-  document.getElementById('stat-b-unit').textContent = runMode ? 'MIN/KM' : '連続日';
+  document.getElementById('stat-b-unit').textContent = runMode ? 'PACE' : '連続日';
+  document.getElementById('stat-b-sub').style.display = runMode ? '' : 'none';
+  document.getElementById('stat-dist-unit').textContent = runMode ? 'KM (今回)' : 'KM';
+  document.body.classList.toggle('run-mode', runMode);
   const statC = document.getElementById('stat-c');
   const statB = document.getElementById('stat-b');
   if (runMode) {
     statC.style.display = '';
     statB.style.borderRight = '1px solid var(--border)';
+    document.getElementById('btn-main').textContent = 'RUN START';
   } else {
     statC.style.display = 'none';
     statB.style.borderRight = 'none';
+    document.getElementById('btn-main').textContent = tracking ? '探索を終える' : 'START';
+    runDist = 0;
   }
   updateDisplay();
 }
@@ -850,11 +918,12 @@ function startTracking() {
   if (!navigator.geolocation) { showToast('GPSが利用できません'); return; }
   tracking  = true;
   startTime = Date.now();
+  if (runMode) { runDist = 0; } // ランモードは毎回リセット
   timerInt  = setInterval(updateTimer, 1000);
   // 記録復元後に広域表示になっている場合、ズームを戻す
   if (map.getZoom() < 16) map.setZoom(16);
 
-  document.getElementById('btn-main').textContent = '探索を終える';
+  document.getElementById('btn-main').textContent = runMode ? 'RUN 終了' : '探索を終える';
   document.getElementById('btn-main').classList.add('tracking');
   document.getElementById('dot').classList.add('active');
   document.getElementById('status-text').textContent = 'TRACKING';
@@ -873,7 +942,7 @@ function stopTracking() {
   if (watchId !== null) navigator.geolocation.clearWatch(watchId);
   clearInterval(timerInt);
 
-  document.getElementById('btn-main').textContent = 'START';
+  document.getElementById('btn-main').textContent = runMode ? 'RUN START' : 'START';
   document.getElementById('btn-main').classList.remove('tracking');
   document.getElementById('dot').classList.remove('active');
   document.getElementById('status-text').textContent = 'PAUSED';
@@ -910,6 +979,7 @@ function onPosition(pos) {
 
   positions.push(ll);
   totalDist += d;
+  if (runMode) runDist += d;
 
   // ゾーン記録（新ゾーンなら地名＋日時を保存）
   const zoneKey = posToZone(ll[0], ll[1]);
@@ -950,7 +1020,8 @@ function onGpsError() { showToast('GPS取得中...'); }
 
 // ─── Display ─────────────────────────────────────────────────
 function updateDisplay() {
-  document.getElementById('stat-dist').textContent = totalDist.toFixed(2);
+  // ランモード：今回の距離／ウォークモード：累計距離
+  document.getElementById('stat-dist').textContent = runMode ? runDist.toFixed(2) : totalDist.toFixed(2);
   if (runMode) {
     document.getElementById('stat-b-val').textContent = getPaceStr();
   } else {
@@ -1160,33 +1231,8 @@ function updateZonePins() {
     }
   });
 
-  // 隣接する未解放ゾーン: 「？」フェードピン
-  const dirs = [{dy:1,dx:0},{dy:-1,dx:0},{dy:0,dx:1},{dy:0,dx:-1}];
-  unlockedZones.forEach((_, key) => {
-    const [gy, gx] = key.split(',').map(Number);
-    dirs.forEach(d => {
-      const nKey = `${gy + d.dy},${gx + d.dx}`;
-      if (!unlockedZones.has(nKey) && !unknownPinMarkers.has(nKey)) {
-        const lat = (gy + d.dy + 0.5) * 0.0045;
-        const lng = (gx + d.dx + 0.5) * 0.005;
-        const icon = L.divIcon({
-          className: '',
-          html: '<div class="zone-pin zone-pin-unknown">？</div>',
-          iconSize: [0, 0],
-          iconAnchor: [0, 0],
-        });
-        unknownPinMarkers.set(nKey, L.marker([lat, lng], { icon, interactive: false, zIndexOffset: 400 }).addTo(map));
-      }
-    });
-  });
-
-  // 解放済みになった「？」ピンを削除
-  unknownPinMarkers.forEach((marker, key) => {
-    if (unlockedZones.has(key)) {
-      map.removeLayer(marker);
-      unknownPinMarkers.delete(key);
-    }
-  });
+  // 隣接する未解放ゾーンの「？」ピンはdrawFog()内のdrawUnknownZonePins()で描画
+  // （霧キャンバスの上に直接描くことでz-index問題を回避）
 }
 
 // ─── Milestone ───────────────────────────────────────────────
