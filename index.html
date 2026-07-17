@@ -610,6 +610,7 @@ function drawUnknownZonePins() {
   fogCtx.textAlign = 'center';
   fogCtx.textBaseline = 'middle';
 
+  // ── Pass 1: 隣接ゾーン（1歩先）→「？」バッジ ──────────────
   unlockedZones.forEach((_, key) => {
     const [gy, gx] = key.split(',').map(Number);
     dirs.forEach(d => {
@@ -621,30 +622,54 @@ function drawUnknownZonePins() {
         const pt = map.latLngToContainerPoint(L.latLng(lat, lng));
         if (pt.x < -20 || pt.x > w + 20 || pt.y < -20 || pt.y > h + 20) return;
 
-        const tw = 22, th = 14, r = 3;
+        const tw = 22, th = 14, cr = 3;
         const x = pt.x - tw / 2, y = pt.y - th / 2;
-        // 丸角矩形
         fogCtx.fillStyle = 'rgba(60,80,55,0.55)';
         fogCtx.strokeStyle = 'rgba(106,122,90,0.55)';
         fogCtx.lineWidth = 1;
         fogCtx.beginPath();
-        fogCtx.moveTo(x + r, y);
-        fogCtx.lineTo(x + tw - r, y);
-        fogCtx.arcTo(x + tw, y, x + tw, y + r, r);
-        fogCtx.lineTo(x + tw, y + th - r);
-        fogCtx.arcTo(x + tw, y + th, x + tw - r, y + th, r);
-        fogCtx.lineTo(x + r, y + th);
-        fogCtx.arcTo(x, y + th, x, y + th - r, r);
-        fogCtx.lineTo(x, y + r);
-        fogCtx.arcTo(x, y, x + r, y, r);
+        fogCtx.moveTo(x + cr, y);
+        fogCtx.lineTo(x + tw - cr, y);
+        fogCtx.arcTo(x + tw, y, x + tw, y + cr, cr);
+        fogCtx.lineTo(x + tw, y + th - cr);
+        fogCtx.arcTo(x + tw, y + th, x + tw - cr, y + th, cr);
+        fogCtx.lineTo(x + cr, y + th);
+        fogCtx.arcTo(x, y + th, x, y + th - cr, cr);
+        fogCtx.lineTo(x, y + cr);
+        fogCtx.arcTo(x, y, x + cr, y, cr);
         fogCtx.closePath();
         fogCtx.fill();
         fogCtx.stroke();
-
         fogCtx.fillStyle = 'rgba(155,170,130,0.8)';
         fogCtx.fillText('？', pt.x, pt.y + 0.5);
       }
     });
+  });
+
+  // ── Pass 2: 遠方ゾーン（2〜4歩先）→ 小さな薄い点 ──────────
+  const drawnFar = new Set(drawn);
+  unlockedZones.forEach((_, key) => {
+    const [gy, gx] = key.split(',').map(Number);
+    for (let dy = -4; dy <= 4; dy++) {
+      for (let dx = -4; dx <= 4; dx++) {
+        const dist = Math.abs(dy) + Math.abs(dx);
+        if (dist < 2 || dist > 4) continue;
+        const nKey = `${gy + dy},${gx + dx}`;
+        if (unlockedZones.has(nKey) || drawnFar.has(nKey)) continue;
+        drawnFar.add(nKey);
+        const lat = (gy + dy + 0.5) * 0.0045;
+        const lng = (gx + dx + 0.5) * 0.005;
+        const pt = map.latLngToContainerPoint(L.latLng(lat, lng));
+        if (pt.x < 0 || pt.x > w || pt.y < 0 || pt.y > h) continue;
+        // 遠いほど薄く・小さく
+        const opacity = dist === 2 ? 0.28 : dist === 3 ? 0.18 : 0.10;
+        const radius  = dist === 2 ? 3.5  : dist === 3 ? 2.5  : 1.8;
+        fogCtx.fillStyle = `rgba(106,122,90,${opacity})`;
+        fogCtx.beginPath();
+        fogCtx.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
+        fogCtx.fill();
+      }
+    }
   });
   fogCtx.restore();
 }
@@ -700,7 +725,9 @@ let timerInt       = null;
 let totalDist      = 0;
 let runDist        = 0;   // ランモード：このランの距離（START毎にリセット）
 let lastMilestone  = 0;
-let unlockedZones  = new Map(); // zoneKey → 地名（例："西新宿"）
+let unlockedZones  = new Map(); // zoneKey → {name, date}
+let zoneProgress   = new Map(); // zoneKey → そのゾーン内の移動距離（km）
+const ZONE_UNLOCK_DIST = 0.15;  // 150m 移動でゾーン解放
 let streakDays     = 0;
 let runMode        = false;
 
@@ -795,16 +822,33 @@ function updateMissions() {
   }
 
   if (next) {
-    const hint    = getNextZoneHint();
+    const hint     = getNextZoneHint();
     const hintHtml = hint ? `<div class="zone-hint">${hint}</div>` : '';
-    const pct     = tracking ? getCurrentZoneCoverage() : 0;
-    const zKey    = lastKnownPos ? posToZone(lastKnownPos[0], lastKnownPos[1]) : null;
-    const zName   = (zKey && unlockedZones.get(zKey)?.name) || 'このエリア';
-    const barHtml = tracking ? `
-      <div class="zone-progress-wrap">
-        <div class="zone-progress-label">${zName} ${pct}%</div>
-        <div class="zone-progress-bar"><div class="zone-progress-fill" style="width:${pct}%"></div></div>
-      </div>` : '';
+    const zKey     = lastKnownPos ? posToZone(lastKnownPos[0], lastKnownPos[1]) : null;
+
+    let barHtml = '';
+    if (tracking && zKey) {
+      if (unlockedZones.has(zKey)) {
+        // 解放済みゾーン：探索率を表示
+        const pct   = getCurrentZoneCoverage();
+        const zName = unlockedZones.get(zKey)?.name || 'このエリア';
+        barHtml = `
+          <div class="zone-progress-wrap">
+            <div class="zone-progress-label">${zName} ${pct}%</div>
+            <div class="zone-progress-bar"><div class="zone-progress-fill" style="width:${pct}%"></div></div>
+          </div>`;
+      } else {
+        // 未解放ゾーン：解放まで残り距離を表示
+        const prog  = zoneProgress.get(zKey) || 0;
+        const pct   = Math.min(100, Math.round(prog / ZONE_UNLOCK_DIST * 100));
+        const remM  = Math.max(0, Math.round((ZONE_UNLOCK_DIST - prog) * 1000));
+        barHtml = `
+          <div class="zone-progress-wrap">
+            <div class="zone-progress-label">解放まで残り ${remM}m</div>
+            <div class="zone-progress-bar"><div class="zone-progress-fill" style="width:${pct}%;background:rgba(180,230,100,0.5)"></div></div>
+          </div>`;
+      }
+    }
     nextEl.innerHTML = `→ ${next.label}<em>${next.hint}</em>${barHtml}${hintHtml}`;
   } else {
     nextEl.innerHTML = '🌍 すべてのミッション達成';
@@ -985,11 +1029,16 @@ function onPosition(pos) {
   totalDist += d;
   if (runMode) runDist += d;
 
-  // ゾーン記録（新ゾーンなら地名＋日時を保存）
+  // ゾーン進捗（そのゾーン内の累計移動距離）
   const zoneKey = posToZone(ll[0], ll[1]);
-  if (!unlockedZones.has(zoneKey)) {
-    const d = new Date();
-    const date = `${d.getMonth()+1}/${d.getDate()}`;
+  const prevZoneProgress = zoneProgress.get(zoneKey) || 0;
+  const newZoneProgress  = prevZoneProgress + d;
+  zoneProgress.set(zoneKey, newZoneProgress);
+
+  // ゾーン解放：ゾーン内で ZONE_UNLOCK_DIST 以上移動したら解放
+  if (!unlockedZones.has(zoneKey) && newZoneProgress >= ZONE_UNLOCK_DIST) {
+    const nowDate = new Date();
+    const date = `${nowDate.getMonth()+1}/${nowDate.getDate()}`;
     unlockedZones.set(zoneKey, { name: '', date }); // 仮登録
     fetchZoneName(ll[0], ll[1]).then(name => {
       const zoneName = name || '未知の地';
