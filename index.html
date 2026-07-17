@@ -417,382 +417,671 @@ body { display: flex; flex-direction: column; }
   opacity: 0.45;
 }
 /* ── Milestone overlay ── */
-Z[\�ۙH��][ێ��^Y��
-L	NY��
-L	N�[�ٛܛN��[��]JML	KML	JN^X[Yێ��[�\��Z[�^�NNN�[�\�Y]�[�Έ�ۙN�X�]N��[��][ێ��X�]H��B��Z[\�ۙK������X�]N�N�B��Z[\�ۙKZ�H�۝\�^�N�
-L��۝]�ZY��L��܎��\�KXX��[�
-N]\�\�X�[�Έ
-[�KZZY��NB��Z[\�ۙK[X�[�۝\�^�N�L\��܎��\�K\�X�N]\�\�X�[�Έ�X\��[�]��
-�B���[O���XY����O���]��\��H�XY\����]���]��\��H���ȏ�T��O�]���]��\��H�Y�[�H��.��/d��c9b�x�c��n��jx� y.%��c8�c9n���c8���]����]���]��[OH�\�^N��^�[YۋZ][\Θ�[�\���\�Lȏ���]ۈ�\��H���Z\�ܞH�ۘ�X��H��\�T�\�[
+.milestone {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%,-50%);
+  text-align: center;
+  z-index: 9998;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.milestone.show { opacity: 1; }
+.milestone-km {
+  font-size: 52px;
+  font-weight: 900;
+  color: var(--accent);
+  letter-spacing: 4px;
+  line-height: 1;
+}
+.milestone-label {
+  font-size: 11px;
+  color: var(--sub);
+  letter-spacing: 3px;
+  margin-top: 6px;
+}
+</style>
+</head>
+<body>
 
-H�]OH�aly�"H��'��؝]ۏ���]ۈ�\��H���[[�H�YH���[[�H�ۘ�X��H����S[�J
-H�]OH�੸�x��8�����x�������8��yb!���ȏ�'歏؝]ۏ���]ۈ�\��H���Z\�ܞH�ۘ�X��H����\�ܞJ
-H��'���؝]ۏ��]��\��H�XY\�\�Y�����[��\��H��]\�Y��YH������[����[�YH��]\�]^���PQO��[����]����]����]����]�YH�\�ܞK[ݙ\�^H�ۘ�X��H�YR\�ܞJ
-H���]���]��\��H�\�ܞK\[�[�YH�\�ܞK\[�[���]��\��H�\�ܞKZ[�H���]���]��\��H�\�ܞK]]H��*&:c,��]���]�YH�\�ܞKX�۝[����]����]����]�YH�X\]ܘ\���]�YH�X\���]����[��\�YH����X�[��\ȏ���[��\ς��]ۈYH���\�X�[�\��ۘ�X��H��X�[�\�X\
+<div class="header">
+  <div>
+    <div class="logo">TERRA</div>
+    <div class="tagline">身体が動くほど、世界が広がる</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <button class="btn-history" onclick="shareResult()" title="共有">📤</button>
+    <button class="btn-mode" id="btn-mode" onclick="toggleMode()" title="ウォーク/ランモード切替">🚶</button>
+    <button class="btn-history" onclick="showHistory()">📋</button>
+    <div class="header-right">
+      <span class="status-dot" id="dot"></span>
+      <span id="status-text">READY</span>
+    </div>
+  </div>
+</div>
 
-H�]OH���g*9g,8�n����؝]ۏ���]����]��\��H��]ȏ��]��\��H��]���]��\��H��]]�[YH�YH��]Y\�����]���]��\��H��]][�]���O�]����]���]��\��H��]�YH��]X����]��\��H��]]�[YH�YH��]X�]�[���]���]��\��H��]][�]�YH��]X�][�]��`(������O�]����]���]��\��H��]�YH��]XȈ�[OH�\�^N��ۙN؛ܙ\�\�Y���ۙNȏ��]��\��H��]]�[YH�YH��]][YH����]���]��\��H��]][�]��SQO�]����]����]����]��\��H��۝�����]��\��H�Z\��[ۋX�\��YH�Z\��[ۋX�\����]��\��H�Z\��[ۋYۙH�YH�Z\��[ۋYۙH���]���]��\��H�Z\��[ۋ[�^�YH�Z\��[ۋ[�^��*�x�o�/�8�o�.+x�)��]����]����]ۈ�\��H���[XZ[��YH���[XZ[��ۘ�X��H����U�X��[��
-H���T�؝]ۏ��]��\��H�Y��[X]H���8�o��f��k�(�y`�x�b��H8����H�Y�H�΋��[^�����X�Z�\��YH�Y��[X]K[[�Ȉ\��]H�؛[�ȏ���x����������8������8ह����fO�O���]����]����]��\��H��\��YH��\����]���]��\��H�Z[\�ۙH�YH�Z[\�ۙH���]��\��H�Z[\�ۙKZ�H�YH�Z[\�ۙKZ�H���]���]��\��H�Z[\�ۙK[X�[���HS����Q�]����]����KKH8௸��8���)���/�9aj9�.�gh��8��x�����KO��]�YH��ۙK[ݙ\�^H���]�YH��ۙKX�۝[����]�YH��ۙKY[[ښH��'���]���]�YH��ۙK[�[YKX�Yȏ��]���]�YH��ۙK[X�[��ऺ)���/��e��g��]����]����]�����ܚ\����8� 8� 8� X\�]\8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� ��ۜ�X\H�X\
-	�X\	����P�۝����[�K�]�X�][ې�۝����[�K�JN�[S^Y\�	�΋����K�[K��[���Y]X\�ܙ��ޟK��K��_K����X^���N�NB�JK�Y�X\
-N���8� 8� 8� ���و�\��[��\�8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� ��ۜ�����[��\�H��[Y[���][[Y[��RY
-	ٛ��X�[��\��N�ۜ�����H����[��\˙�]�۝^
-	̙	�N�ۜ�����SHH�L��ۜ��U�PS�QUT��HL���9��k��Lycb�o�;�"8ஸ��8��9.#yi"{�"B���[��[ۈY]\���^[�]��H�ۜ�HHX\�]����۝Z[�\��[�
-�]��]��JN�ۜ��HX\�]����۝Z[�\��[�
-�]��]
-�
-�U�PS�QUT���LLĽ
-K��JN�]\��X]�X^
-�X]�X��K�HH��JJN���9� 9/c��8�k�讹/�B�B���[��[ۈ�\�^�Q���
-H�ۜ�ܘ\H��[Y[���][[Y[��RY
-	�X\]ܘ\	�N�ۜ��Hܘ\�ٙ��]�Y�ۜ�Hܘ\�ٙ��]ZY�Y�
-]�Z
-H��\]Y\�[�[X][ۑ��[YJ�\�^�Q���N��]\���H��8��8�8ਸ੸��9�*�讹k���j��ya�z*i�(c�����[��\˝�YH�����[��\˚ZY�H�]ћ��
-NB���[��[ۈ�]ћ��
-H�ۜ��H����[��\˝�Y�ۜ�H����[��\˚ZY�Y�
-]�Z
-H�]\��������X\��X�
-�
-N���K�9aj:gh�ऺg)��i�he��������[�[HH�ؘJ
-
-	ѓ���S_JX������[�X�
-�
-N�Y�
-��][ۜ˛[��OOH
-H�]\��������\
+<div id="history-overlay" onclick="hideHistory()"></div>
+<div class="history-panel" id="history-panel">
+  <div class="history-handle"></div>
+  <div class="history-title">記録</div>
+  <div id="history-content"></div>
+</div>
 
-H8�i�aj9a���k�[�[۸हc��h��i�����ਂ����۞�\�������8����&�a�x�j��h��i�࠹�h��e��c�[�[۹�lx�a;�"]�[��8�k�a�z)!���8�8�j��e��"B�������]�J
-N������Y�[�]
+<div id="map-wrap">
+  <div id="map"></div>
+  <canvas id="fog-canvas"></canvas>
+  <button id="btn-recenter" onclick="recenterMap()" title="現在地へ">◎</button>
+</div>
 
-N��][ۜ˙�ܑXX�
-O��ۜ�HX\�]����۝Z[�\��[�
-�]���K�WJJN�ۜ��HY]\���^[��K�WJN�����[ݙU��
-���JN�����\����K�X]�H
-��N���9�`�*"9f�ࢻ�"8�����x�x�����;�"B�JN������\
+<div class="stats">
+  <div class="stat">
+    <div class="stat-value" id="stat-dist">0.00</div>
+    <div class="stat-unit">KM</div>
+  </div>
+  <div class="stat" id="stat-b">
+    <div class="stat-value" id="stat-b-val">0</div>
+    <div class="stat-unit" id="stat-b-unit">連続日</div>
+  </div>
+  <div class="stat" id="stat-c" style="display:none;border-right:none;">
+    <div class="stat-value" id="stat-time">0:00</div>
+    <div class="stat-unit">TIME</div>
+  </div>
+</div>
 
-N����\9a�HH9�jx�a8�g��8��ਹaj9/d������X\��X�
-�
-N���9g,9f��ऺ`#�`c�(j9�.��������\�ܙJ
-N���ˈ9� xस�8��x�����8���������i��o8�b��f{�"9����b8�x�j��"B���][ۜ˙�ܑXX�
-O��ۜ�HX\�]����۝Z[�\��[�
-�]���K�WJJN�ۜ��HY]\���^[��K�WJN�ۜ��H�����ܙX]T�YX[ܘYY[�
-��K�
-��
-K��K�
-�K�
-N˘Y��ܔ��
-	ܙؘJ
-
-
-I�N˘Y��ܔ��
-K�ؘJ
-
-	ѓ���S_JX
-N������[�[HH�������Y�[�]
+<div class="control">
+  <div class="mission-card" id="mission-card">
+    <div class="mission-done" id="mission-done"></div>
+    <div class="mission-next" id="mission-next">読み込み中…</div>
+  </div>
+  <button class="btn-main" id="btn-main" onclick="toggleTracking()">START</button>
+  <div class="affiliate">
+    まずは装備から →
+    <a href="https://amzn.to/placeholder" id="affiliate-link" target="_blank">ランニングシューズを探す</a>
+  </div>
+</div>
 
-N�����\����K�
-�K�X]�H
-��N������[
+<div class="toast" id="toast"></div>
+<div class="milestone" id="milestone">
+  <div class="milestone-km" id="milestone-km"></div>
+  <div class="milestone-label">KM UNLOCKED</div>
+</div>
 
-NJNB��X\�ۊ	�[ݙH���H�Y]ܙ\�]	��]ћ��N�[��˘Y]�[�\�[�\�	ܙ\�^�I��\�^�Q���N��S���Y�\�HT�8��8��:j�8�eyi"yb�yk�o��Y�
-�[��˝�\�X[�Y]�ܝ
-H�[��˝�\�X[�Y]�ܝ�Y]�[�\�[�\�	ܙ\�^�I��\�^�Q���NB����8� 8� 8� �\��[���][ۈX\��\�8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� �]��][ۓX\��\�H�[]XY[��X\��\�H�[��[��[ۈ\]S��][ۓX\��\�XY[��H����][ۈ���ۜ��X�ۈH�]�X�ۊ�\�Ә[YN�	���[�	�]��\��H���][ۋY����]����X�۔�^�N��M�M�K�X�ې[��܎��K�JN�Y�
-[��][ۓX\��\�H��][ۓX\��\�H�X\��\��X�ێ��X�ۋ�[�^ٙ��]�LJK�Y�X\
-NH[�H��][ۓX\��\���]]��
-NB����XY[���ۙH
-ۛHY�XY[��\�]�Z[X�H[��[XX�JB�Y�
-XY[��OOH�[	��XY[��OOH[�Y�[�Y	��Z\ӘS�XY[��JH�ۜ��ۙR[H]��[OH���Y�M��ZY��M����][ێ��[]]�N�[�ٛܛN���]J	�XY[��YY�N��[�ٛܛK[ܚY�[���ȏ��]��\��H�XY[��X�ۙH���]���]��\��H���][ۋY���[OH���][ێ�X���]N����Y��ȏ��]����]���ۜ��ۙRX�ۈH�]�X�ۊ�\�Ә[YN�	���[��ۙR[�X�۔�^�N��M�̗K�X�ې[��܎���K�JNY�
-ZXY[��X\��\�HXY[��X\��\�H�X\��\��X�ێ��ۙRX�ۋ�[�^ٙ��]�NNHJK�Y�X\
-NH[�HXY[��X\��\���]]��
-K��]X�ۊ�ۙRX�ۊNB�B�B����8� 8� 8� �]H8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� �]�X��[��H�[�N]�]�YH�[]��][ۜ�H�N]�[[�HH�[]�\�[YHH�[][Y\�[�H�[]�[\�H]\�Z[\�ۙHH][����Y�ۙ\�H�]�X\
+<!-- ゾーン解放 全画面イベント -->
+<div id="zone-overlay">
+  <div id="zone-content">
+    <div id="zone-emoji">🗺</div>
+    <div id="zone-name-big"></div>
+    <div id="zone-label">を解放した</div>
+  </div>
+</div>
 
-N����ۙR�^H8���9g,9d#{�"9/���&��)o���9k�Ȼ�"B�]��XZ�^\�H]�[�[�HH�[�N���8� 8� 8� �ۙH
-9�!
-Lp��LJH8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� ��[��[ۈ��֛ۙJ]��H�]\��	�X]���܊]��
+<script>
+// ─── Map setup ───────────────────────────────────────────────
+const map = L.map('map', {
+  zoomControl: false,
+  attributionControl: false,
+});
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19
+}).addTo(map);
 
-J_K	�X]���܊����
-J_XB����8� 8� 8� :`!��8સ����8���������;�"�[���Y]X\��Z[�][x����(y��{�"x� 8� 8� 8� 8� 8� 8� 8� �\�[���[��[ۈ�]��ۙS�[YJ]��H�H�ۜ�\�H΋�ۛ�Z[�][K��[���Y]X\�ܙ�ܙ]�\��O�]I�]I�ۏI���I��ܛX]Z��ۉ�X��\[[��XY�OZ�X�ۜ��\�H]�Z]�]�
-\�
-N�ۜ�]HH]�Z]�\˚��ۊ
-N�ۜ�HH]K�Y�\���N�]\��K��ZY���\���K��X�\��K�]X\�\�K��]W�\��X�K���[�H	��*���x�k�g,	�H�]�
-JH�]\��	��*���x�k�g,	�B�B����8� 8� 8� :`(������y�l8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� ��[��[ۈ�Y��XZ�
-H�H�ۜ�H��Ӌ�\��J��[�ܘY�K��]][J	�\��W���XZ��H	�Ȝ��XZȎ��\�]H���[I�N�ۜ��^HH�]�]J
-K��]T��[��
-N�ۜ�Y\�\�^HH�]�]J
-N�Y\�\�^K��]]JY\�\�^K��]]J
-HHJNY�
-�\�]HOOH�^H�\�]HOOHY\�\�^K��]T��[��
-JH��XZ�^\�H���XZ�H[�H��XZ�^\�H���:`%9b!��8�gB�H�]�
-JH���XZ�^\�H�B�B���[��[ۈ�]�T��XZ�
-H�H�ۜ��^HH�]�]J
-K��]T��[��
-N�ۜ�H��Ӌ�\��J��[�ܘY�K��]][J	�\��W���XZ��H	�Ȝ��XZȎ��\�]H���[I�N�ۜ�Y\�\�^HH�]�]J
-N�Y\�\�^K��]]JY\�\�^K��]]J
-HHJN]�^Y�
-�\�]HOOH�^JH�^H���XZ����9.⹥�x�fx�i��j�*&:c,��"8�o[�HY�
-�\�]HOOHY\�\�^K��]T��[��
-JH�^H���XZ�
-�N���:`(�����[�H�^HN���8������������XZ�^\�H�^��[�ܘY�K��]][J	�\��W���XZ����Ӌ���[��Y�J���XZΈ�^\�]N��^HJJNH�]�
-JH�B�B����8� 8� 8� 8��������������k���H8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� ��ۜ�RT��SӔ�H�X�[�	�.��/d��c9��)���x�g��[��	��y�jx�c���X�Έ�O�˙\��H��K��X�[�	�.��/d��c9�*x�o��h��g��[��	�Z�y�jx�c���X�Έ�O�˙\��HK�K��X�[�	�)��a��c9n���c8�h��g��[��	��௸��8���)���/���X�Έ�O�˞�ۙ\��H�K��X�[�	�g,9f���c:"l��k��a8�g��[��	���y�jx�c���X�Έ�O�˙\��HˌK��X�[�	���8�e��a:(e�ह�n�)���e��g��[��	�x௸��8���)���/���X�Έ�O�˞�ۙ\��H
-HK��X�[�	����z`(�����i�i%��j�a��g��[��	����y����dx����X�Έ�O�˜��XZ��H�K��X�[�	�.��/d��c9g,9f��हhe�ࢹ����b8�g��[��	�L8௸��8���)���/���X�Έ�O�˞�ۙ\��HLK��X�[�	��乡h��j��j��h��g��[��	����y����dx����X�Έ�O�˜��XZ��H
-�K��X�[�	�.%��c8�c9n���c8�h��g��[��	�L�y�jx�c���X�Έ�O�˙\��HL�K�N��[��[ۈ\]SZ\��[ۜ�
-H�ۜ�ۙQ[H��[Y[���][[Y[��RY
-	�Z\��[ۋYۙI�N�ۜ��^[H��[Y[���][[Y[��RY
-	�Z\��[ۋ[�^	�N���8�h�9�*��x����8��9�`��Y�
-��][ۜ˛[��OOH
-HۙQ[�[��\�SH	���^[�[��\�SH	��T�8ह��8�e��i�� zg)��k�.+xह�jx�cya��gx�a���]\��B�Y�
-]�X��[��H��9bcyf������8���`�ࢸ���`g9�h�.+B��ۜ�̈H�\���[\��ۙ\Έ[����Y�ۙ\˜�^�K��XZΈ��XZ�^\�N�ۜ��^�HRT��SӔ˙�[�
-HO�[K��X��̊JNۙQ[�[��\�SH	���^[�[��\�SH�^���9.⹥�x�k��jx�d�ह�jx�c��'�[O��(N�	ۙ^��X�[O�[O���	�'�#H8�fx�nx�i��k���������������`e9�$	��]\��B���ۜ��H�\���[\��ۙ\Έ[����Y�ۙ\˜�^�K��XZΈ��XZ�^\�N�ۜ�ۙHHRT��SӔ˙�[\�HO�K��X���JN�ۜ��^HRT��SӔ˙�[�
-HO�[K��X���JN�Y�
-ۙK�[���
-HۙQ[�[��\�SHۙK��X�JL�K�X\
-HO��[���$���[���K�X�[X
-K���[�	�� 	�NH[�HۙQ[�[��\�SH	��B��Y�
-�^
-H�ۜ�[�H�]�^�ۙR[�
+// ─── Fog of War canvas ───────────────────────────────────────
+const fogCanvas = document.getElementById('fog-canvas');
+const fogCtx    = fogCanvas.getContext('2d');
+const FOG_ALPHA     = 0.93;
+const REVEAL_METERS = 100; // 現実100m半径（ズーム不変）
 
-N�ۜ�[�[H[��]��\��H��ۙKZ[����[�O�]���	���ۜ��H�X��[����]�\��[��ۙP�ݙ\�Y�J
-H��ۜ���^HH\�ۛ�۔�����֛ۙJ\�ۛ�۔���K\�ۛ�۔���WJH��[�ۜ���[YHH
-��^H	��[����Y�ۙ\˙�]
-��^JO˛�[YJH	��d��k��8��ਉ��ۜ��\�[H�X��[����]��\��H��ۙK\��ܙ\��]ܘ\���]��\��H��ۙK\��ܙ\��[X�[��ޓ�[Y_H	��IO�]���]��\��H��ۙK\��ܙ\��X�\���]��\��H��ۙK\��ܙ\��Y�[��[OH��Y���IH���]���]����]���	���^[�[��\�SH8���	ۙ^�X�[O[O�ۙ^�[�O�[O�ؘ\�[I�[�[XH[�H�^[�[��\�SH	�'�#H8�fx�nx�i��k���������������`e9�$	�B�B����8� 8� 8� �Y�]�Y�X��8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� ��[��[ۈ�Y�]�Y�X��
-H�Y��XZ�
-N�H�ۜ��]�YH��Ӌ�\��J��[�ܘY�K��]][J	�\��W��X���H	��I�N�ۜ��]�Y�ۙ\�H��Ӌ�\��J��[�ܘY�K��]][J	�\��Wޛۙ\��H	��I�N��9�����x�x��8�������;�"��[���"x�����8��x�x��8�������;�"^ۘ[YK]_{�"x���8�8��8��8�������[����Y�ۙ\�H�]�X\
-�]�Y�ۙ\˛X\
+function metersToPixels(lat, lng) {
+  const a = map.latLngToContainerPoint(L.latLng(lat, lng));
+  const b = map.latLngToContainerPoint(L.latLng(lat + (REVEAL_METERS / 111320), lng));
+  return Math.max(20, Math.abs(a.y - b.y)); // 最低20pxは確保
+}
 
-���JHO��\[و�OOH	���[������[YN��]N�	��H���JJN�Y�
-�]�Y�[���JH��][ۜ�H�]�Y�܈
-]HHN�H�]�Y�[���J��H�[\�
-�H]�\��[�J�]�Y�KLWK�]�Y�WJNB���8௸��8����c9�*�/�ykf8�k�h-9d"8�k�.�:-�x�b��ya�z*"9���"9g,9d#x�j��e��"B�Y�
-[����Y�ۙ\˜�^�HOOH
-H�]�Y��ܑXX�
-O��ۜ���H��֛ۙJ�K�WJNY�
-][����Y�ۙ\˚\���JH[����Y�ۙ\˜�]
-����[YN�	��]N�	��JNJNB��[[�HH��[[�J�]�Y���܎�	�؍M��	��ZY����X�]N��HJK�Y�X\
-NX\��]��[���[[�K��]��[��
-K�Y[�Έ�
-HJN\]Q\�^J
-N����\�
-	�bcyf��k�*&:c,�हo�ya`��e��o��e��g��NH[�HX\��]�Y]���K��L�L�K�͍�WKMJNB�H�]�
-JHX\��]�Y]���K��L�L�K�͍�WKMJNB��\]Y\�[�[X][ۑ��[YJ
+function resizeFog() {
+  const wrap = document.getElementById('map-wrap');
+  const w = wrap.offsetWidth;
+  const h = wrap.offsetHeight;
+  if (!w || !h) { requestAnimationFrame(resizeFog); return; } // レイアウト未確定なら再試行
+  fogCanvas.width  = w;
+  fogCanvas.height = h;
+  drawFog();
+}
 
-HO��\]Y\�[�[X][ۑ��[YJ
+function drawFog() {
+  const w = fogCanvas.width;
+  const h = fogCanvas.height;
+  if (!w || !h) return;
+  fogCtx.clearRect(0, 0, w, h);
 
-HO��\�^�Q���
-JJN���:-m�b�y�`��j�. 9n���h8�dy��g*9g,8हc�o���e��i���������स��x��Y�
-�]�Y�]܋��[���][ۊH�]�Y�]܋��[���][ۋ��]�\��[���][ۊ��O��ۜ�H��˘��ܙ˛]]YK�˘��ܙ˛ۙ�]YWN\�ۛ�۔��HX\��]�Y]�M�N�]ћ��
-NK�[�[Y[�]�X^[][PY�N��[�X�RY�X��\�X�N��YHJNB�B��Y�]�Y�X��
-N���8� 8� 8� 8����8��yb!����8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� ��[��[ۈ���S[�J
-H�[�[�HH\�[�[�N��[Y[���][[Y[��RY
-	؝�[[�I�K�^�۝[�H�[�[�H�	�'�����	�'歉���[Y[���][[Y[��RY
-	��]X�][�]	�K�^�۝[�H�[�[�H�	�RS���I��	�`(������I��ۜ��]�H��[Y[���][[Y[��RY
-	��]X��N�ۜ��]�H��[Y[���][[Y[��RY
-	��]X��NY�
-�[�[�JH�]˜�[K�\�^HH	���]���[K��ܙ\��Y�H	�\��Y�\�KX�ܙ\�I�H[�H�]˜�[K�\�^HH	ۛۙI��]���[K��ܙ\��Y�H	ۛۙI�B�\]Q\�^J
-NB����8� 8� 8� 8����8�z*"9��8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� ��[��[ۈ�]X�T��
-HY�
-�[\��
-H\�\�[YJH�]\��	�KN�KI��ۜ��X��H
-]K����
-HH�\�[YJH�L�ۜ�X�T�X�\��HH�X����[\��ۜ�HHX]���܊X�T�X�\��H�
-�
-N�ۜ��HX]���܊X�T�X�\��H	H
-�
-N�]\��	�_N��˝���[��
-K�Y�\�
-�	�	�_XB����8� 8� 8� �X��[��8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� ��[��[ۈ���U�X��[��
-H�X��[������X��[��
-H��\��X��[��
-NB��]\�ۛ�۔��H�[���9��g*9g,9/�y� B���[��[ۈ�X�[�\�X\
+  // 1. 全面を霧で塗る
+  fogCtx.fillStyle = `rgba(4, 8, 4, ${FOG_ALPHA})`;
+  fogCtx.fillRect(0, 0, w, h);
 
-HY�
-\�ۛ�۔��HX\��]�Y]�\�ۛ�۔��X]�X^
-X\��]���J
-KM�JNH[�H����\�
-	���हc�o��.+x�i��fI�NB�B���[��[ۈ�\��X��[��
-HY�
-[�]�Y�]܋��[���][ۊH�����\�
-	����c9b*y�*8�i��cx�o��f����N��]\���B��X��[��H�YN�\�[YHH]K����
-N[Y\�[�H�][�\��[
-\]U[Y\�L
-N��:*&:c,�o�ya`�o�8�j�n��g��(j9�.��j��j��h��i��a8��h-9d"8� xஸ��8��8ह�.��fB�Y�
-X\��]���J
-HM�HX\��]���JM�N���[Y[���][[Y[��RY
-	؝�[XZ[��K�^�۝[�H	�����(�ह�`��b8�����[Y[���][[Y[��RY
-	؝�[XZ[��K��\��\��Y
-	��X��[���N��[Y[���][[Y[��RY
-	��	�K��\��\��Y
-	�X�]�I�N��[Y[���][[Y[��RY
-	��]\�]^	�K�^�۝[�H	��P��S����\]SZ\��[ۜ�
-N�]�YH�]�Y�]܋��[���][ۋ��]���][ۊ۔��][ۋۑ��\��܋[�X�RY�X��\�X�N��YK�[Y[�]�ML�X^[][PY�N�L�JN����\�
-	���8��x����x����:e��i���NB���[��[ۈ���X��[��
-H�X��[��H�[�NY�
-�]�YOOH�[
-H�]�Y�]܋��[���][ۋ��X\��]�
-�]�Y
-N�X\�[�\��[
-[Y\�[�
-N���[Y[���][[Y[��RY
-	؝�[XZ[��K�^�۝[�H	��T�	���[Y[���][[Y[��RY
-	؝�[XZ[��K��\��\���[[ݙJ	��X��[���N��[Y[���][[Y[��RY
-	��	�K��\��\���[[ݙJ	�X�]�I�N��[Y[���][[Y[��RY
-	��]\�]^	�K�^�۝[�H	�UT�Q	���]�T��XZ�
-N�H��[�ܘY�K��]][J	�\��W��X�����Ӌ���[��Y�J��][ۜ�JN��[�ܘY�K��]][J	�\��Wޛۙ\����Ӌ���[��Y�Jˋ��[����Y�ۙ\�JJNH�]�
-JH�B�����\�
-	�*&:c,�ह/�ykf8�e��o��e��g��N\]Q\�^J
-NB����8� 8� 8� ���[�X��8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� ��[��[ۈ۔��][ۊ��H�ۜ�H��˘��ܙ˛]]YK�˘��ܙ˛ۙ�]YWN�ۜ�XY[��H�˘��ܙ˚XY[�����9��g*9g,8ह/�y� B�\�ۛ�۔��H���[�^\�\]H��][ۈX\��\��\]S��][ۓX\��\�XY[��N�Y�
-��][ۜ˛[��OOH
-HX\��]�Y]�M�N��][ۜ˜\�
-
-N�]ћ��
-N�]\��B���ۜ�H]�\��[�J��][ۜ����][ۜ˛[��HWK
-NY�
-��H�]\������H��\�B����][ۜ˜\�
-
-N�[\�
-�H���8௸��8���*&:c,��"9��8௸��8����j��yg,9d#{�"���y�`�ह/�ykf;�"B��ۜ��ۙR�^HH��֛ۙJ�K�WJNY�
-][����Y�ۙ\˚\��ۙR�^JJH�ۜ�H�]�]J
-N�ۜ�]HH	���][۝
+  if (positions.length === 0) return;
 
-J�_K����]]J
-_X[����Y�ۙ\˜�]
-�ۙR�^K��[YN�	��]HJN���9.��n�c,���]��ۙS�[YJ�K�WJK�[��[YHO��ۜ��ۙS�[YHH�[YH	��*���x�k�g,	�[����Y�ۙ\˜�]
-�ۙR�^K��[YN��ۙS�[YK]HJN��֛ۙU[�����ۙS�[YJN\]Q\�^J
-N�H���[�ܘY�K��]][J	�\��Wޛۙ\����Ӌ���[��Y�Jˋ��[����Y�ۙ\�JJN�H�]�
-JH�B�JNB�����Y�]�]�Y�
-�[[�JHX\��[[ݙS^Y\��[[�JN�[[�HH��[[�J��][ۜ����܎�	�؍M��	��ZY����X�]N��HJK�Y�X\
-N����]�X[���]ћ��
-N���[��X\�[��
-N\]Q\�^J
-N���Z[\�ۙH]�\�H�Z�B�Y�
-X]���܊�[\�
-��H�X]���܊\�Z[\�ۙH
-��JH\�Z[\�ۙHH�[\����Z[\�ۙJ
-X]���܊�[\�
-��H��K�њ^Y
-JJNB���H���[�ܘY�K��]][J	�\��W��X�����Ӌ���[��Y�J��][ۜ�JN�H�]�
-JH�B�B���[��[ۈۑ��\��܊
-H�����\�
-	���c�o��.+K����N�B����8� 8� 8� \�^H8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� ��[��[ۈ\]Q\�^J
-H��[Y[���][[Y[��RY
-	��]Y\�	�K�^�۝[�H�[\��њ^Y
-�NY�
-�[�[�JH��[Y[���][[Y[��RY
-	��]X�]�[	�K�^�۝[�H�]X�T��
-NH[�H��[Y[���][[Y[��RY
-	��]X�]�[	�K�^�۝[�H��XZ�^\���	�'�)I�
-���XZ�^\��	�	�B�\]SZ\��[ۜ�
-N\]V�ۙT[��
-NB���[��[ۈ\]U[Y\�
-HY�
-\�\�[YH\�[�[�JH�]\���ۜ��HX]���܊
-]K����
-HH�\�[YJH�L
-N�ۜ�HHX]���܊��
-�
-N�ۜ���H�	H
-���[Y[���][[Y[��RY
-	��]][YI�K�^�۝[�H	�_N���˝���[��
-K�Y�\�
-�	�	�_X��[Y[���][[Y[��RY
-	��]X�]�[	�K�^�۝[�H�]X�T��
-NB����8� 8� 8� ]�\��[�H8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� ��[��[ۈ]�\��[�JK�H�ۜ��H
-���N�ۜ�]H
-��HHV�JH
-�X]�H�N�ۜ�ۈH
-��WHHV�WJH
-�X]�H�N�ۜ�HX]��[�]̊J����
-�X]����V�J�X]�K�N
-H
-�X]������J�X]�K�N
-H
-�X]��[�ۋ̊J����]\���
-��
-�X]�\�[�X]��\�
-
-JNB����8� 8� 8� �\�8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� �]�\�[Y\�H�[�[��[ۈ����\�
-\��H�ۜ�[H��[Y[���][[Y[��RY
-	��\�	�N[�^�۝[�H\��[��\��\��Y
-	�����N�X\�[Y[�]
-�\�[Y\�N�\�[Y\�H�][Y[�]
+  // 2. clip() で全円のunionを取ってクリア
+  //    nonzeroルール：重なっても正しくunion扱い（evenoddの重複バグなし）
+  fogCtx.save();
+  fogCtx.beginPath();
+  positions.forEach(ll => {
+    const pt = map.latLngToContainerPoint(L.latLng(ll[0], ll[1]));
+    const r  = metersToPixels(ll[0], ll[1]);
+    fogCtx.moveTo(pt.x + r, pt.y);
+    fogCtx.arc(pt.x, pt.y, r, 0, Math.PI * 2); // 時計回り（デフォルト）
+  });
+  fogCtx.clip(); // clip内 = 歩いたエリア全体
+  fogCtx.clearRect(0, 0, w, h); // 地図を透過表示
+  fogCtx.restore();
 
+  // 3. 縁をグラデーションでぼかす（控えめに）
+  positions.forEach(ll => {
+    const pt = map.latLngToContainerPoint(L.latLng(ll[0], ll[1]));
+    const r  = metersToPixels(ll[0], ll[1]);
+    const g  = fogCtx.createRadialGradient(pt.x, pt.y, r * 0.85, pt.x, pt.y, r * 1.08);
+    g.addColorStop(0, 'rgba(4,8,4,0)');
+    g.addColorStop(1, `rgba(4,8,4,${FOG_ALPHA})`);
+    fogCtx.fillStyle = g;
+    fogCtx.beginPath();
+    fogCtx.arc(pt.x, pt.y, r * 1.08, 0, Math.PI * 2);
+    fogCtx.fill();
+  });
+}
 
-HO�[��\��\���[[ݙJ	�����K��
-NB����8� 8� 8� :*&:c,�����8��8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� ��[��[ۈ���\�ܞJ
-H�ۜ��H�\���[\��ۙ\Έ[����Y�ۙ\˜�^�K��XZΈ��XZ�^\�N��8�x��਺(j9�.�bb�fi9�"8�o���8௸��8���. :)���"9��8�e��a:h!��"B��ۜ��ۙS\�Hˋ��[����Y�ۙ\˝�[Y\�
-WK��]�\��J
-N]�ۙ\�[H�ۙS\��[��OOH��	�]��\��H�\�ܞKY[\H���o��h:)���/��e��g�௸��8����c8�`�ࢸ�o��f����]����ۙS\��X\
-�O��]��\��H�\�ܞKZ][HۙH����[��'��	ދ��[YH	��*���x�k�g,	�O��[����[��\��H�\�ܞKY]H��ދ�]_O��[����]���
-K���[�	��N���8��������������. :)�]Z\��[ۜ�[HRT��SӔ˛X\
-HO��ۜ�ۙHHK��X���N�]\��]��\��H�\�ܞKZ][H	�ۙH�	�ۙI��	����Y	�H����[���ۙH�	��$���	�����H	�K�X�[O��[����[��\��H�\�ܞKZ[����K�[�O��[����]��JK���[�	��N���[Y[���][[Y[��RY
-	�\�ܞKX�۝[�	�K�[��\�SH�]��\��H�\�ܞK\�X�[ۈ���]��\��H�\�ܞK\�X�[ۋ[X�[��)���/��e��g�௸��8����"	ޛۙS\��[��{�"O�]���	ޛۙ\�[B��]���]��\��H�\�ܞK\�X�[ۈ���]��\��H�\�ܞK\�X�[ۋ[X�[�����������������]���	�Z\��[ۜ�[B��]�����[Y[���][[Y[��RY
-	�\�ܞK[ݙ\�^I�K��[K�\�^HH	؛�����\]Y\�[�[X][ۑ��[YJ
+map.on('move zoom viewreset', drawFog);
+window.addEventListener('resize', resizeFog);
+// iOS Safari URLバー高さ変動対応
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', resizeFog);
+}
 
-HO���[Y[���][[Y[��RY
-	�\�ܞK\[�[	�K��\��\��Y
-	��[��JNB���[��[ۈYR\�ܞJ
-H��[Y[���][[Y[��RY
-	�\�ܞK\[�[	�K��\��\���[[ݙJ	��[��N�][Y[�]
+// ─── Current location marker ──────────────────────────────────
+let locationMarker = null;
+let headingMarker  = null;
 
+function updateLocationMarker(ll, heading) {
+  // Location dot
+  const dotIcon = L.divIcon({
+    className: '',
+    html: '<div class="location-dot"></div>',
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
+  });
 
-HO����[Y[���][[Y[��RY
-	�\�ܞK[ݙ\�^I�K��[K�\�^HH	ۛۙI��K�
-NB����8� 8� 8� 8௸��8���)���/�9aj9�.�gh��%9a�8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� �]�ۙSݙ\�^U[Y\�H�[�[��[ۈ��֛ۙU[�����[YJH�ۜ�[H��[Y[���][[Y[��RY
-	ޛۙK[ݙ\�^I�N��[Y[���][[Y[��RY
-	ޛۙK[�[YKX�Y��K�^�۝[�H�[YN[��[K�\�^HH	ٛ^	��\]Y\�[�[X][ۑ��[YJ
+  if (!locationMarker) {
+    locationMarker = L.marker(ll, { icon: dotIcon, zIndexOffset: 1000 }).addTo(map);
+  } else {
+    locationMarker.setLatLng(ll);
+  }
 
-HO�[��\��\��Y
-	�����JN�X\�[Y[�]
-�ۙSݙ\�^U[Y\�N�ۙSݙ\�^U[Y\�H�][Y[�]
+  // Heading cone (only if heading is available and reliable)
+  if (heading !== null && heading !== undefined && !isNaN(heading)) {
+    const coneHtml = `<div style="
+      width:16px;height:16px;position:relative;
+      transform:rotate(${heading}deg);transform-origin:8px 24px;">
+      <div class="heading-cone"></div>
+      <div class="location-dot" style="position:absolute;top:8px;left:0;"></div>
+    </div>`;
+    const coneIcon = L.divIcon({
+      className: '',
+      html: coneHtml,
+      iconSize: [16, 32],
+      iconAnchor: [8, 24],
+    });
+    if (!headingMarker) {
+      headingMarker = L.marker(ll, { icon: coneIcon, zIndexOffset: 999 }).addTo(map);
+    } else {
+      headingMarker.setLatLng(ll).setIcon(coneIcon);
+    }
+  }
+}
 
+// ─── State ───────────────────────────────────────────────────
+let tracking       = false;
+let watchId        = null;
+let positions      = [];
+let polyline       = null;
+let startTime      = null;
+let timerInt       = null;
+let totalDist      = 0;
+let lastMilestone  = 0;
+let unlockedZones  = new Map(); // zoneKey → 地名（例："西新宿"）
+let streakDays     = 0;
+let runMode        = false;
 
-HO�[��\��\���[[ݙJ	�����N�][Y[�]
+// ─── Zone (約500m×500m) ──────────────────────────────────────
+function posToZone(lat, lng) {
+  return `${Math.floor(lat / 0.0045)},${Math.floor(lng / 0.005)}`;
+}
 
+// ─── 逆ジオコーディング（OpenStreetMap Nominatim・無料）────────
+async function fetchZoneName(lat, lng) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ja`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    const a    = data.address || {};
+    return a.neighbourhood || a.suburb || a.quarter || a.city_district || a.county || '未知の地';
+  } catch(e) {
+    return '未知の地';
+  }
+}
 
-HO��[��[K�\�^HH	ۛۙI��K�
-NK��
-NB����8� 8� 8� 9��g*8௸��8�������(���8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� ��ۜ��ӑW�ԒQHN���8௸��8���ऎp��ONx���x�j�b!�bl��"x���x�b
-M[{�"B���[��[ۈ�]�\��[��ۙP�ݙ\�Y�J
-HY�
-[\�ۛ�۔����][ۜ˛[��OOH
-H�]\���ۜ��]��HH\�ۛ�۔���ۜ��]HX]���܊]��
+// ─── 連続日数 ────────────────────────────────────────────────
+function loadStreak() {
+  try {
+    const d = JSON.parse(localStorage.getItem('terra_streak') || '{"streak":0,"lastDate":null}');
+    const today = new Date().toDateString();
+    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+    if (d.lastDate === today || d.lastDate === yesterday.toDateString()) {
+      streakDays = d.streak;
+    } else {
+      streakDays = 0; // 途切れた
+    }
+  } catch(e) { streakDays = 0; }
+}
 
-JN�ۜ����HX]���܊����
-JN�ۜ��[]�^�HH�
+function saveStreak() {
+  try {
+    const today = new Date().toDateString();
+    const d = JSON.parse(localStorage.getItem('terra_streak') || '{"streak":0,"lastDate":null}');
+    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+    let next;
+    if (d.lastDate === today)                       next = d.streak;      // 今日すでに記録済み
+    else if (d.lastDate === yesterday.toDateString()) next = d.streak + 1; // 連続
+    else                                              next = 1;             // リセット
+    streakDays = next;
+    localStorage.setItem('terra_streak', JSON.stringify({ streak: next, lastDate: today }));
+  } catch(e) {}
+}
 
-H��ӑW�ԒQ�ۜ��[���^�HH�
-H��ӑW�ԒQ��ۜ��\�]YH�]��]
+// ─── ミッション定義 ──────────────────────────────────────────
+const MISSIONS = [
+  { label: '身体が目覚めた',          hint: '300m歩く',      check: s => s.dist   >= 0.3  },
+  { label: '身体が温まった',          hint: '1km歩く',       check: s => s.dist   >= 1.0  },
+  { label: '視野が広がった',          hint: '3ゾーン解放',   check: s => s.zones  >= 3    },
+  { label: '地図が色づいた',          hint: '3km歩く',       check: s => s.dist   >= 3.0  },
+  { label: '新しい街を発見した',      hint: '5ゾーン解放',   check: s => s.zones  >= 5    },
+  { label: '3日連続で外に出た',       hint: '3日続ける',     check: s => s.streak >= 3    },
+  { label: '身体が地図を塗り替えた',  hint: '10ゾーン解放',  check: s => s.zones  >= 10   },
+  { label: '習慣になった',            hint: '7日続ける',     check: s => s.streak >= 7    },
+  { label: '世界が広がった',          hint: '10km歩く',      check: s => s.dist   >= 10.0 },
+];
 
-N��][ۜ˙�ܑXX�
-O��ۜ��HHX]���܊
-�HH�]
-��
+function updateMissions() {
+  const doneEl = document.getElementById('mission-done');
+  const nextEl = document.getElementById('mission-next');
 
-JH��[]�^�JN�ۜ��HX]���܊
-�WHH���
-��
-JH��[���^�JN��LH8�bK�8���H8���9cb�o�����xस����8��܈
-]HHL��HH��J��H�܈
-]HL��H��
-��H�ۜ�HH�H
-�KH�
-�Y�
-H�H	��H�ӑW�ԒQ	���H	���ӑW�ԒQ
-H�\�]Y�Y
-	�_K	�X
-NB�B�B�JN�]\��X]�Z[�LX]���[�
-�\�]Y��^�H�
-�ӑW�ԒQ
-��ӑW�ԒQ
-H
-�L
-JNB����8� 8� 8� 9�(x�8��਺*�9l#��������8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� ��[��[ۈ�]�^�ۙR[�
+  // ③ 未スタート時
+  if (positions.length === 0) {
+    doneEl.innerHTML = '';
+    nextEl.innerHTML = 'START を押して、霧の中を歩き出そう';
+    return;
+  }
+  if (!tracking) {
+    // 前回データあり・停止中
+    const s2 = { dist: totalDist, zones: unlockedZones.size, streak: streakDays };
+    const next2 = MISSIONS.find(m => !m.check(s2));
+    doneEl.innerHTML = '';
+    nextEl.innerHTML = next2
+      ? `今日はどこを歩く？ <em>次: ${next2.label}</em>`
+      : '🌍 すべてのミッション達成';
+    return;
+  }
 
-HY�
-[\�ۛ�۔��H�]\���[�ۜ��]��HH\�ۛ�۔���ۜ��]HX]���܊]��
+  const s = { dist: totalDist, zones: unlockedZones.size, streak: streakDays };
+  const done  = MISSIONS.filter(m => m.check(s));
+  const next  = MISSIONS.find(m => !m.check(s));
 
-JN�ۜ����HX]���܊����
-JN�ۜ���X�]H
-]��
+  if (done.length > 0) {
+    doneEl.innerHTML = done.slice(-2).map(m => `<span>✓</span>${m.label}`).join('　');
+  } else {
+    doneEl.innerHTML = '';
+  }
 
-JHH+zLat;
+  if (next) {
+    const hint    = getNextZoneHint();
+    const hintHtml = hint ? `<div class="zone-hint">${hint}</div>` : '';
+    const pct     = tracking ? getCurrentZoneCoverage() : 0;
+    const zKey    = lastKnownPos ? posToZone(lastKnownPos[0], lastKnownPos[1]) : null;
+    const zName   = (zKey && unlockedZones.get(zKey)?.name) || 'このエリア';
+    const barHtml = tracking ? `
+      <div class="zone-progress-wrap">
+        <div class="zone-progress-label">${zName} ${pct}%</div>
+        <div class="zone-progress-bar"><div class="zone-progress-fill" style="width:${pct}%"></div></div>
+      </div>` : '';
+    nextEl.innerHTML = `→ ${next.label}<em>${next.hint}</em>${barHtml}${hintHtml}`;
+  } else {
+    nextEl.innerHTML = '🌍 すべてのミッション達成';
+  }
+}
+
+// ─── Load saved track ────────────────────────────────────────
+function loadSavedTrack() {
+  loadStreak();
+  try {
+    const saved = JSON.parse(localStorage.getItem('terra_track') || '[]');
+    const savedZones = JSON.parse(localStorage.getItem('terra_zones') || '[]');
+    // 旧フォーマット（string）→新フォーマット（{name, date}）マイグレーション
+    unlockedZones = new Map(savedZones.map(([k, v]) => [
+      k, typeof v === 'string' ? { name: v, date: '' } : v
+    ]));
+
+    if (saved.length > 1) {
+      positions = saved;
+      for (let i = 1; i < saved.length; i++) {
+        totalDist += haversine(saved[i-1], saved[i]);
+      }
+      // ゾーンが未保存の場合は軌跡から再計算（地名なし）
+      if (unlockedZones.size === 0) {
+        saved.forEach(ll => {
+          const zk = posToZone(ll[0], ll[1]);
+          if (!unlockedZones.has(zk)) unlockedZones.set(zk, { name: '', date: '' });
+        });
+      }
+      polyline = L.polyline(saved, { color: '#b4e664', weight: 3, opacity: 0.9 }).addTo(map);
+      map.fitBounds(polyline.getBounds(), { padding: [40, 40] });
+      updateDisplay();
+      showToast('前回の記録を復元しました');
+    } else {
+      map.setView([35.6812, 139.7671], 15);
+    }
+  } catch(e) {
+    map.setView([35.6812, 139.7671], 15);
+  }
+  requestAnimationFrame(() => requestAnimationFrame(() => resizeFog()));
+
+  // 起動時に一度だけ現在地を取得してマップをパン
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      const ll = [pos.coords.latitude, pos.coords.longitude];
+      lastKnownPos = ll;
+      map.setView(ll, 16);
+      drawFog();
+    }, null, { timeout: 8000, maximumAge: 30000, enableHighAccuracy: true });
+  }
+}
+loadSavedTrack();
+
+// ─── モード切替 ──────────────────────────────────────────────
+function toggleMode() {
+  runMode = !runMode;
+  document.getElementById('btn-mode').textContent = runMode ? '🏃' : '🚶';
+  document.getElementById('stat-b-unit').textContent = runMode ? 'MIN/KM' : '連続日';
+  const statC = document.getElementById('stat-c');
+  const statB = document.getElementById('stat-b');
+  if (runMode) {
+    statC.style.display = '';
+    statB.style.borderRight = '1px solid var(--border)';
+  } else {
+    statC.style.display = 'none';
+    statB.style.borderRight = 'none';
+  }
+  updateDisplay();
+}
+
+// ─── ペース計算 ──────────────────────────────────────────────
+function getPaceStr() {
+  if (totalDist < 0.05 || !startTime) return '--:--';
+  const secs = (Date.now() - startTime) / 1000;
+  const paceSecPerKm = secs / totalDist;
+  const pm = Math.floor(paceSecPerKm / 60);
+  const ps = Math.floor(paceSecPerKm % 60);
+  return `${pm}:${ps.toString().padStart(2, '0')}`;
+}
+
+// ─── Tracking ────────────────────────────────────────────────
+function toggleTracking() {
+  tracking ? stopTracking() : startTracking();
+}
+
+let lastKnownPos = null; // 現在地保持
+
+function recenterMap() {
+  if (lastKnownPos) {
+    map.setView(lastKnownPos, Math.max(map.getZoom(), 16));
+  } else {
+    showToast('GPSを取得中です');
+  }
+}
+
+function startTracking() {
+  if (!navigator.geolocation) { showToast('GPSが利用できません'); return; }
+  tracking  = true;
+  startTime = Date.now();
+  timerInt  = setInterval(updateTimer, 1000);
+  // 記録復元後に広域表示になっている場合、ズームを戻す
+  if (map.getZoom() < 16) map.setZoom(16);
+
+  document.getElementById('btn-main').textContent = '探索を終える';
+  document.getElementById('btn-main').classList.add('tracking');
+  document.getElementById('dot').classList.add('active');
+  document.getElementById('status-text').textContent = 'TRACKING';
+
+  updateMissions();
+  watchId = navigator.geolocation.watchPosition(onPosition, onGpsError, {
+    enableHighAccuracy: true,
+    timeout: 15000,
+    maximumAge: 1000,
+  });
+  showToast('トラッキング開始');
+}
+
+function stopTracking() {
+  tracking = false;
+  if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+  clearInterval(timerInt);
+
+  document.getElementById('btn-main').textContent = 'START';
+  document.getElementById('btn-main').classList.remove('tracking');
+  document.getElementById('dot').classList.remove('active');
+  document.getElementById('status-text').textContent = 'PAUSED';
+
+  saveStreak();
+  try {
+    localStorage.setItem('terra_track', JSON.stringify(positions));
+    localStorage.setItem('terra_zones', JSON.stringify([...unlockedZones]));
+  } catch(e) {}
+  showToast('記録を保存しました');
+  updateDisplay();
+}
+
+// ─── GPS callback ─────────────────────────────────────────────
+function onPosition(pos) {
+  const ll      = [pos.coords.latitude, pos.coords.longitude];
+  const heading = pos.coords.heading;
+
+  // 現在地を保持
+  lastKnownPos = ll;
+
+  // Always update location marker
+  updateLocationMarker(ll, heading);
+
+  if (positions.length === 0) {
+    map.setView(ll, 17);
+    positions.push(ll);
+    drawFog();
+    return;
+  }
+
+  const d = haversine(positions[positions.length - 1], ll);
+  if (d < 0.003) return; // < 3m noise
+
+  positions.push(ll);
+  totalDist += d;
+
+  // ゾーン記録（新ゾーンなら地名＋日時を保存）
+  const zoneKey = posToZone(ll[0], ll[1]);
+  if (!unlockedZones.has(zoneKey)) {
+    const d = new Date();
+    const date = `${d.getMonth()+1}/${d.getDate()}`;
+    unlockedZones.set(zoneKey, { name: '', date }); // 仮登録
+    fetchZoneName(ll[0], ll[1]).then(name => {
+      const zoneName = name || '未知の地';
+      unlockedZones.set(zoneKey, { name: zoneName, date });
+      showZoneUnlock(zoneName);
+      updateDisplay();
+      try { localStorage.setItem('terra_zones', JSON.stringify([...unlockedZones])); } catch(e) {}
+    });
+  }
+
+  // Redraw path
+  if (polyline) map.removeLayer(polyline);
+  polyline = L.polyline(positions, { color: '#b4e664', weight: 3, opacity: 0.9 }).addTo(map);
+
+  // Reveal fog
+  drawFog();
+
+  // Pan
+  map.panTo(ll);
+  updateDisplay();
+
+  // Milestone every 0.5km
+  if (Math.floor(totalDist * 2) > Math.floor(lastMilestone * 2)) {
+    lastMilestone = totalDist;
+    showMilestone((Math.floor(totalDist * 2) / 2).toFixed(1));
+  }
+
+  try { localStorage.setItem('terra_track', JSON.stringify(positions)); } catch(e) {}
+}
+
+function onGpsError() { showToast('GPS取得中...'); }
+
+// ─── Display ─────────────────────────────────────────────────
+function updateDisplay() {
+  document.getElementById('stat-dist').textContent = totalDist.toFixed(2);
+  if (runMode) {
+    document.getElementById('stat-b-val').textContent = getPaceStr();
+  } else {
+    document.getElementById('stat-b-val').textContent = streakDays > 0 ? '🔥' + streakDays : '0';
+  }
+  updateMissions();
+  updateZonePins();
+}
+
+function updateTimer() {
+  if (!startTime || !runMode) return;
+  const s  = Math.floor((Date.now() - startTime) / 1000);
+  const m  = Math.floor(s / 60);
+  const ss = s % 60;
+  document.getElementById('stat-time').textContent = `${m}:${ss.toString().padStart(2, '0')}`;
+  document.getElementById('stat-b-val').textContent = getPaceStr();
+}
+
+// ─── Haversine ───────────────────────────────────────────────
+function haversine(a, b) {
+  const R    = 6371;
+  const dLat = (b[0] - a[0]) * Math.PI / 180;
+  const dLon = (b[1] - a[1]) * Math.PI / 180;
+  const x    = Math.sin(dLat/2)**2
+    + Math.cos(a[0]*Math.PI/180) * Math.cos(b[0]*Math.PI/180) * Math.sin(dLon/2)**2;
+  return R * 2 * Math.asin(Math.sqrt(x));
+}
+
+// ─── Toast ───────────────────────────────────────────────────
+let toastTimer = null;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ─── 記録シート ──────────────────────────────────────────────
+function showHistory() {
+  const s = { dist: totalDist, zones: unlockedZones.size, streak: streakDays };
+  // スコア表示削除済み
+
+  // ゾーン一覧（新しい順）
+  const zoneList = [...unlockedZones.values()].reverse();
+  let zonesHtml = zoneList.length === 0
+    ? '<div class="history-empty">まだ解放したゾーンがありません</div>'
+    : zoneList.map(z =>
+        `<div class="history-item done">
+          <span>🗺 ${z.name || '未知の地'}</span>
+          <span class="history-date">${z.date}</span>
+        </div>`
+      ).join('');
+
+  // ミッション一覧
+  let missionsHtml = MISSIONS.map(m => {
+    const done = m.check(s);
+    return `<div class="history-item ${done ? 'done' : 'locked'}">
+      <span>${done ? '✓' : '→'} ${m.label}</span>
+      <span class="history-hint">${m.hint}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('history-content').innerHTML = `
+    <div class="history-section">
+      <div class="history-section-label">解放したゾーン（${zoneList.length}）</div>
+      ${zonesHtml}
+    </div>
+    <div class="history-section">
+      <div class="history-section-label">ミッション</div>
+      ${missionsHtml}
+    </div>`;
+
+  document.getElementById('history-overlay').style.display = 'block';
+  requestAnimationFrame(() => document.getElementById('history-panel').classList.add('open'));
+}
+
+function hideHistory() {
+  document.getElementById('history-panel').classList.remove('open');
+  setTimeout(() => { document.getElementById('history-overlay').style.display = 'none'; }, 280);
+}
+
+// ─── ゾーン解放 全画面演出 ──────────────────────────────────
+let zoneOverlayTimer = null;
+function showZoneUnlock(name) {
+  const el = document.getElementById('zone-overlay');
+  document.getElementById('zone-name-big').textContent = name;
+  el.style.display = 'flex';
+  requestAnimationFrame(() => el.classList.add('show'));
+  clearTimeout(zoneOverlayTimer);
+  zoneOverlayTimer = setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => { el.style.display = 'none'; }, 380);
+  }, 2600);
+}
+
+// ─── 現在ゾーン探索率 ────────────────────────────────────────
+const ZONE_GRID = 9; // ゾーンを9×9=81マスに分割（1マス≈55m）
+
+function getCurrentZoneCoverage() {
+  if (!lastKnownPos || positions.length === 0) return 0;
+  const [lat, lng] = lastKnownPos;
+  const zLat = Math.floor(lat / 0.0045);
+  const zLng = Math.floor(lng / 0.005);
+  const cellLatSize = 0.0045 / ZONE_GRID;
+  const cellLngSize = 0.005  / ZONE_GRID;
+
+  const visited = new Set();
+  positions.forEach(ll => {
+    const cy = Math.floor((ll[0] - zLat * 0.0045) / cellLatSize);
+    const cx = Math.floor((ll[1] - zLng * 0.005)  / cellLngSize);
+    // 100m ≈ 1.8マス → 半径2マスをマーク
+    for (let dy = -2; dy <= 2; dy++) {
+      for (let dx = -2; dx <= 2; dx++) {
+        const y = cy + dy, x = cx + dx;
+        if (y >= 0 && y < ZONE_GRID && x >= 0 && x < ZONE_GRID) {
+          visited.add(`${y},${x}`);
+        }
+      }
+    }
+  });
+  return Math.min(100, Math.round(visited.size / (ZONE_GRID * ZONE_GRID) * 100));
+}
+
+// ─── 次エリア誘導ヒント ──────────────────────────────────────
+function getNextZoneHint() {
+  if (!lastKnownPos) return null;
+  const [lat, lng] = lastKnownPos;
+  const zLat = Math.floor(lat / 0.0045);
+  const zLng = Math.floor(lng / 0.005);
+  const fracLat = (lat / 0.0045) - zLat;
   const fracLng = (lng / 0.005)  - zLng;
   const candidates = [
     { dy:  1, dx:  0, label: '北', dist: Math.round((1 - fracLat) * 450 / 50) * 50 },
