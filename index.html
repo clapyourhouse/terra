@@ -475,6 +475,123 @@ body.run-mode .btn-mode {
   background: rgba(106,122,90,0.08);
   opacity: 0.45;
 }
+/* ── ラン サマリー ── */
+#run-summary {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 21000;
+  flex-direction: column;
+}
+#run-summary.show { display: flex; }
+.rs-header {
+  padding: 52px 24px 16px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.rs-logo {
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 5px;
+  color: var(--accent);
+}
+.rs-date {
+  font-size: 10px;
+  color: var(--sub);
+  letter-spacing: 1px;
+}
+.rs-route {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+}
+#rs-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.rs-stats {
+  display: flex;
+  padding: 16px 0;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.rs-stat {
+  flex: 1;
+  text-align: center;
+  padding: 6px 0;
+}
+.rs-stat + .rs-stat { border-left: 1px solid var(--border); }
+.rs-stat-val {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.rs-stat-label {
+  font-size: 9px;
+  color: var(--sub);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 5px;
+}
+.rs-actions {
+  display: flex;
+  gap: 10px;
+  padding: 12px 20px 44px;
+  flex-shrink: 0;
+}
+.rs-btn-share {
+  flex: 1;
+  padding: 15px;
+  background: var(--accent);
+  color: #080f08;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.rs-btn-close {
+  padding: 15px 20px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--sub);
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+/* ── ラン記録アイテム ── */
+.run-record {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(180,230,100,0.05);
+}
+.run-record-stats {
+  display: flex;
+  gap: 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.run-record-meta {
+  font-size: 10px;
+  color: var(--sub);
+  text-align: right;
+}
+
 /* ── Milestone overlay ── */
 .milestone {
   position: fixed;
@@ -559,7 +676,7 @@ body.run-mode .btn-mode {
   <button class="btn-main" id="btn-main" onclick="toggleTracking()">START</button>
   <div class="affiliate">
     まずは装備から →
-    <a href="https://amzn.to/placeholder" id="affiliate-link" target="_blank">ランニングシューズを探す</a>
+    <a href="https://www.amazon.co.jp/s?k=%E3%83%A9%E3%83%B3%E3%83%8B%E3%83%B3%E3%82%B0+%E3%82%B7%E3%83%A5%E3%83%BC%E3%82%BA&tag=clapyourhou00-22" id="affiliate-link" target="_blank" rel="noopener">ランニングシューズを探す</a>
   </div>
 </div>
 
@@ -581,6 +698,35 @@ body.run-mode .btn-mode {
     <div id="zone-affiliate-label">このエリアを走る装備を揃える</div>
     <a id="zone-affiliate-btn" href="#" target="_blank" rel="noopener">Amazonで探す →</a>
     <button id="zone-close" onclick="closeZoneOverlay()">閉じる</button>
+  </div>
+</div>
+
+<!-- ラン完了サマリー（Strava風）-->
+<div id="run-summary">
+  <div class="rs-header">
+    <div class="rs-logo">TERRA</div>
+    <div class="rs-date" id="rs-date"></div>
+  </div>
+  <div class="rs-route">
+    <canvas id="rs-canvas"></canvas>
+  </div>
+  <div class="rs-stats">
+    <div class="rs-stat">
+      <div class="rs-stat-val" id="rs-dist">0.00</div>
+      <div class="rs-stat-label">KM</div>
+    </div>
+    <div class="rs-stat">
+      <div class="rs-stat-val" id="rs-pace">--:--</div>
+      <div class="rs-stat-label">MIN/KM</div>
+    </div>
+    <div class="rs-stat">
+      <div class="rs-stat-val" id="rs-time">0:00</div>
+      <div class="rs-stat-label">TIME</div>
+    </div>
+  </div>
+  <div class="rs-actions">
+    <button class="rs-btn-share" onclick="shareRunCard()">📤 共有</button>
+    <button class="rs-btn-close" onclick="hideRunSummary()">閉じる</button>
   </div>
 </div>
 
@@ -801,6 +947,7 @@ let unlockedZones  = new Map(); // zoneKey → {name, date}
 let zoneProgress   = new Map(); // zoneKey → そのゾーン内の移動距離（km）
 let lastKnownPos   = null;      // 現在地（drawUnknownZonePinsより前に宣言必須）
 let sessionStartPos = null;     // 今のセッションの最初のポジション（nullなら未記録）
+let runStartIdx    = 0;         // ランモード開始時のpositions[]インデックス
 const ZONE_UNLOCK_DIST = 0.15;  // 150m 移動でゾーン解放
 let streakDays     = 0;
 let runMode        = false;
@@ -1010,7 +1157,7 @@ function getPaceStr() {
   return `${pm}:${ps.toString().padStart(2, '0')}`;
 }
 
-// ─── Tracking ────────────────────────────────────────────────
+// ─── Tracking ────────────────────────────────────────────────────────────────────────────────────
 function toggleTracking() {
   tracking ? stopTracking() : startTracking();
 }
@@ -1027,7 +1174,7 @@ function startTracking() {
   if (!navigator.geolocation) { showToast('GPSが利用できません'); return; }
   tracking  = true;
   startTime = Date.now();
-  if (runMode) { runDist = 0; } // ランモードは毎回リセット
+  if (runMode) { runDist = 0; runStartIdx = positions.length; } // ランモードは毎回リセット
   sessionStartPos = null; // 新セッション開始：起点バイパスをリセット
   timerInt  = setInterval(updateTimer, 1000);
   // 記録復元後に広域表示になっている場合、ズームを戻す
@@ -1062,11 +1209,17 @@ function stopTracking() {
     localStorage.setItem('terra_track', JSON.stringify(positions));
     localStorage.setItem('terra_zones', JSON.stringify([...unlockedZones]));
   } catch(e) {}
-  showToast('記録を保存しました');
+
+  const run = saveRun();
+  if (run) {
+    showRunSummary(run); // ランモード→サマリー画面へ
+  } else {
+    showToast('記録を保存しました');
+  }
   updateDisplay();
 }
 
-// ─── GPS callback ─────────────────────────────────────────────
+// ─── GPS callback ─────────────────────────────────────────────────────────────────────────────────
 function onPosition(pos) {
   const ll       = [pos.coords.latitude, pos.coords.longitude];
   const heading  = pos.coords.heading;
@@ -1090,7 +1243,7 @@ function onPosition(pos) {
     return;
   }
 
-  // ── ノイズフィルター（2回目以降）────────────────────────
+  // ── ノイズフィルター（2回目以降）────────────────────────────────────────
   // 1. GPS精度が悪い場合はスキップ（室内・ビル影など）
   if (accuracy > 20) return; // 精度20m超 = ノイズとみなす
 
@@ -1147,7 +1300,153 @@ function onPosition(pos) {
 
 function onGpsError() { showToast('GPS取得中...'); }
 
-// ─── Display ─────────────────────────────────────────────────
+// ─── ラン記録保存 ────────────────────────────────────────────────────────────────────────────────
+function saveRun() {
+  if (!runMode || runDist < 0.1) return null;
+  const elapsed = Math.max(1, Math.floor((Date.now() - startTime) / 1000));
+  const paceSecPerKm = elapsed / runDist;
+  const pm = Math.floor(paceSecPerKm / 60);
+  const ps = Math.floor(paceSecPerKm % 60);
+  const paceStr = `${pm}:${ps.toString().padStart(2,'0')}`;
+  const tm = Math.floor(elapsed / 60);
+  const ts = elapsed % 60;
+  const timeStr = `${tm}:${ts.toString().padStart(2,'0')}`;
+  const now = new Date();
+  const dateStr = `${now.getMonth()+1}/${now.getDate()}`;
+  const run = { date: dateStr, dist: runDist.toFixed(2), pace: paceStr, time: timeStr };
+  try {
+    const runs = JSON.parse(localStorage.getItem('terra_runs') || '[]');
+    runs.unshift(run);
+    if (runs.length > 100) runs.length = 100;
+    localStorage.setItem('terra_runs', JSON.stringify(runs));
+  } catch(e) {}
+  return run;
+}
+
+// ─── ラン サマリー ───────────────────────────────────────────────────────────────────────────────
+function showRunSummary(run) {
+  const el = document.getElementById('run-summary');
+  const now = new Date();
+  document.getElementById('rs-date').textContent =
+    `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${now.getMinutes().toString().padStart(2,'00')}`;
+  document.getElementById('rs-dist').textContent = run.dist;
+  document.getElementById('rs-pace').textContent = run.pace;
+  document.getElementById('rs-time').textContent = run.time;
+  el.classList.add('show');
+  // レイアウト確定後にcanvas描画
+  requestAnimationFrame(() => requestAnimationFrame(drawRunRoute));
+}
+
+function hideRunSummary() {
+  document.getElementById('run-summary').classList.remove('show');
+}
+
+// ─── ラン ルート描画 ─────────────────────────────────────────────────────────────────────────────
+function drawRunRoute() {
+  const canvas = document.getElementById('rs-canvas');
+  const wrap = canvas.parentElement;
+  const W = wrap.offsetWidth  || 375;
+  const H = wrap.offsetHeight || 280;
+  canvas.width  = W;
+  canvas.height = H;
+
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#080f08';
+  ctx.fillRect(0, 0, W, H);
+
+  // このランのポジションのみ
+  const pts = positions.slice(runStartIdx);
+  if (pts.length < 2) {
+    ctx.fillStyle = 'rgba(180,230,100,0.15)';
+    ctx.font = '11px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('ルートデータなし', W / 2, H / 2);
+    return;
+  }
+
+  const lats = pts.map(p => p[0]);
+  const lngs = pts.map(p => p[1]);
+  const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+  const latRange  = maxLat - minLat || 0.002;
+  const lngRangeAdj = (maxLng - minLng || 0.002) * Math.cos((minLat + maxLat) / 2 * Math.PI / 180);
+  const centerLat = (minLat + maxLat) / 2;
+  const centerLng = (minLng + maxLng) / 2;
+  const pad = 48;
+  const scaleFactor = Math.min((W - pad * 2) / lngRangeAdj, (H - pad * 2) / latRange);
+
+  const toPoint = (lat, lng) => ({
+    x: W / 2 + (lng - centerLng) * Math.cos(centerLat * Math.PI / 180) * scaleFactor,
+    y: H / 2 - (lat - centerLat) * scaleFactor,
+  });
+
+  // グロー
+  ctx.save();
+  ctx.shadowColor = '#b4e664';
+  ctx.shadowBlur = 14;
+  ctx.strokeStyle = 'rgba(180,230,100,0.3)';
+  ctx.lineWidth = 9;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  pts.forEach((p, i) => {
+    const pt = toPoint(p[0], p[1]);
+    i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y);
+  });
+  ctx.stroke();
+
+  // メインライン
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#b4e664';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  pts.forEach((p, i) => {
+    const pt = toPoint(p[0], p[1]);
+    i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y);
+  });
+  ctx.stroke();
+  ctx.restore();
+
+  // 始点（緑）
+  const sp = toPoint(pts[0][0], pts[0][1]);
+  ctx.fillStyle = '#b4e664';
+  ctx.beginPath();
+  ctx.arc(sp.x, sp.y, 5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 終点（オレンジ）
+  const ep = toPoint(pts[pts.length-1][0], pts[pts.length-1][1]);
+  ctx.fillStyle = '#ff9900';
+  ctx.beginPath();
+  ctx.arc(ep.x, ep.y, 5, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// ─── ラン共有 ────────────────────────────────────────────────────────────────────────────────────
+function shareRunCard() {
+  try {
+    const runs = JSON.parse(localStorage.getItem('terra_runs') || '[]');
+    const r = runs[0];
+    if (!r) return;
+    const text =
+      `🏃 ${r.dist}km | ${r.pace}/km | ${r.time}\n` +
+      `#TERRA で走ってきた\n` +
+      `身体が動くほど、世界が広がる\n` +
+      `https://clapyourhouse.github.io/terra`;
+    if (navigator.share) {
+      navigator.share({ text }).catch(e => {
+        if (e.name !== 'AbortError') copyToClipboard(text);
+      });
+    } else {
+      copyToClipboard(text);
+    }
+  } catch(e) {
+    showToast('共有できませんでした');
+  }
+}
+
+// ─── Display ─────────────────────────────────────────────────────────────────────────────────────
 function updateDisplay() {
   // ランモード：今回の距離／ウォークモード：累計距離
   document.getElementById('stat-dist').textContent = runMode ? runDist.toFixed(2) : totalDist.toFixed(2);
@@ -1169,7 +1468,7 @@ function updateTimer() {
   document.getElementById('stat-b-val').textContent = getPaceStr();
 }
 
-// ─── Haversine ───────────────────────────────────────────────
+// ─── Haversine ───────────────────────────────────────────────────────────────────────────────────
 function haversine(a, b) {
   const R    = 6371;
   const dLat = (b[0] - a[0]) * Math.PI / 180;
@@ -1179,7 +1478,7 @@ function haversine(a, b) {
   return R * 2 * Math.asin(Math.sqrt(x));
 }
 
-// ─── Toast ───────────────────────────────────────────────────
+// ─── Toast ───────────────────────────────────────────────────────────────────────────────────────
 let toastTimer = null;
 function showToast(msg) {
   const el = document.getElementById('toast');
@@ -1189,10 +1488,31 @@ function showToast(msg) {
   toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
 }
 
-// ─── 記録シート ──────────────────────────────────────────────
+// ─── 記録シート ──────────────────────────────────────────────────────────────────────────────────
 function showHistory() {
   const s = { dist: totalDist, zones: unlockedZones.size, streak: streakDays };
-  // スコア表示削除済み
+
+  // ラン記録
+  let runsHtml = '';
+  try {
+    const runs = JSON.parse(localStorage.getItem('terra_runs') || '[]');
+    if (runs.length === 0) {
+      runsHtml = '<div class="history-empty">ランの記録がまだありません</div>';
+    } else {
+      runsHtml = runs.map(r =>
+        `<div class="run-record">
+          <div class="run-record-stats">
+            <span>${r.dist} km</span>
+            <span>${r.pace}/km</span>
+            <span>${r.time}</span>
+          </div>
+          <div class="run-record-meta">${r.date}</div>
+        </div>`
+      ).join('');
+    }
+  } catch(e) {
+    runsHtml = '<div class="history-empty">読み込みエラー</div>';
+  }
 
   // ゾーン一覧（新しい順）
   const zoneList = [...unlockedZones.values()].reverse();
@@ -1216,6 +1536,10 @@ function showHistory() {
 
   document.getElementById('history-content').innerHTML = `
     <div class="history-section">
+      <div class="history-section-label">ラン記録</div>
+      ${runsHtml}
+    </div>
+    <div class="history-section">
       <div class="history-section-label">解放したゾーン（${zoneList.length}）</div>
       ${zonesHtml}
     </div>
@@ -1233,9 +1557,9 @@ function hideHistory() {
   setTimeout(() => { document.getElementById('history-overlay').style.display = 'none'; }, 280);
 }
 
-// ─── ゾーン解放 全画面演出 ──────────────────────────────────
+// ─── ゾーン解放 全画面演出 ──────────────────────────────────────────────────────────────────────
 // ★ Amazon Associates タグ（承認後に実際のIDに変更）
-const AMAZON_TAG = 'YOUR_TAG-22'; // ← ここを自分のタグIDに変更する
+const AMAZON_TAG = 'clapyourhou00-22';
 
 let zoneOverlayTimer  = null;
 let zoneAffTimer      = null;
@@ -1281,7 +1605,7 @@ function closeZoneOverlay() {
   }, 380);
 }
 
-// ─── 現在ゾーン探索率 ────────────────────────────────────────
+// ─── 現在ゾーン探索率 ────────────────────────────────────────────────────────────────────────────
 const ZONE_GRID = 9; // ゾーンを9×9=81マスに分割（1マス≈55m）
 
 function getCurrentZoneCoverage() {
@@ -1309,7 +1633,7 @@ function getCurrentZoneCoverage() {
   return Math.min(100, Math.round(visited.size / (ZONE_GRID * ZONE_GRID) * 100));
 }
 
-// ─── 次エリア誘導ヒント ──────────────────────────────────────
+// ─── 次エリア誘導ヒント ──────────────────────────────────────────────────────────────────────────
 function getNextZoneHint() {
   if (!lastKnownPos) return null;
   const [lat, lng] = lastKnownPos;
@@ -1331,7 +1655,7 @@ function getNextZoneHint() {
   return `📍 ${n.label}へ約${n.dist}m、まだ霧に包まれた街がある`;
 }
 
-// ─── SNS共有 ─────────────────────────────────────────────────
+// ─── SNS共有 ─────────────────────────────────────────────────────────────────────────────────────
 async function shareResult() {
   const zoneNames = [...unlockedZones.values()]
     .filter(z => z.name)
@@ -1364,14 +1688,14 @@ function copyToClipboard(text) {
   }
 }
 
-// ─── ゾーンピン ──────────────────────────────────────────────
+// ─── ゾーンピン ──────────────────────────────────────────────────────────────────────────────────
 // ゾーン名ラベル・？ピンはすべて drawUnknownZonePins() でcanvasに直接描画
 // （Leafletマーカーは霧canvasの下に入るため廃止）
 function updateZonePins() {
   drawFog(); // canvasを再描画すれば最新のゾーン状態が反映される
 }
 
-// ─── Milestone ───────────────────────────────────────────────
+// ─── Milestone ───────────────────────────────────────────────────────────────────────────────────
 let milestoneTimer = null;
 function showMilestone(km) {
   const el = document.getElementById('milestone');
