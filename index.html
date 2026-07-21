@@ -725,7 +725,7 @@ body.run-mode .btn-mode {
     </div>
   </div>
   <div class="rs-actions">
-    <button class="rs-btn-share" onclick="shareRunCard()">📤 共有</button>
+    <button class="rs-btn-share" onclick="shareRunCard()">📸 画像でシェア</button>
     <button class="rs-btn-close" onclick="hideRunSummary()">閉じる</button>
   </div>
 </div>
@@ -1157,7 +1157,7 @@ function getPaceStr() {
   return `${pm}:${ps.toString().padStart(2, '0')}`;
 }
 
-// ─── Tracking ────────────────────────────────────────────────────────────────────────────────────
+// ─── Tracking ────────────────────────────────────────────────
 function toggleTracking() {
   tracking ? stopTracking() : startTracking();
 }
@@ -1219,7 +1219,7 @@ function stopTracking() {
   updateDisplay();
 }
 
-// ─── GPS callback ─────────────────────────────────────────────────────────────────────────────────
+// ─── GPS callback ─────────────────────────────────────────────
 function onPosition(pos) {
   const ll       = [pos.coords.latitude, pos.coords.longitude];
   const heading  = pos.coords.heading;
@@ -1243,7 +1243,7 @@ function onPosition(pos) {
     return;
   }
 
-  // ── ノイズフィルター（2回目以降）────────────────────────────────────────
+  // ── ノイズフィルター（2回目以降）────────────────────────
   // 1. GPS精度が悪い場合はスキップ（室内・ビル影など）
   if (accuracy > 20) return; // 精度20m超 = ノイズとみなす
 
@@ -1300,7 +1300,7 @@ function onPosition(pos) {
 
 function onGpsError() { showToast('GPS取得中...'); }
 
-// ─── ラン記録保存 ────────────────────────────────────────────────────────────────────────────────
+// ─── ラン記録保存 ────────────────────────────────────────────
 function saveRun() {
   if (!runMode || runDist < 0.1) return null;
   const elapsed = Math.max(1, Math.floor((Date.now() - startTime) / 1000));
@@ -1323,12 +1323,12 @@ function saveRun() {
   return run;
 }
 
-// ─── ラン サマリー ───────────────────────────────────────────────────────────────────────────────
+// ─── ラン サマリー ───────────────────────────────────────────
 function showRunSummary(run) {
   const el = document.getElementById('run-summary');
   const now = new Date();
   document.getElementById('rs-date').textContent =
-    `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${now.getMinutes().toString().padStart(2,'00')}`;
+    `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${now.getMinutes().toString().padStart(2,'0')}`;
   document.getElementById('rs-dist').textContent = run.dist;
   document.getElementById('rs-pace').textContent = run.pace;
   document.getElementById('rs-time').textContent = run.time;
@@ -1341,7 +1341,7 @@ function hideRunSummary() {
   document.getElementById('run-summary').classList.remove('show');
 }
 
-// ─── ラン ルート描画 ─────────────────────────────────────────────────────────────────────────────
+// ─── ラン ルート描画 ─────────────────────────────────────────
 function drawRunRoute() {
   const canvas = document.getElementById('rs-canvas');
   const wrap = canvas.parentElement;
@@ -1423,30 +1423,195 @@ function drawRunRoute() {
   ctx.fill();
 }
 
-// ─── ラン共有 ────────────────────────────────────────────────────────────────────────────────────
+// ─── ラン共有 ────────────────────────────────────────────────
 function shareRunCard() {
   try {
     const runs = JSON.parse(localStorage.getItem('terra_runs') || '[]');
     const r = runs[0];
     if (!r) return;
-    const text =
+
+    // 1080×1080 シェアカードを生成
+    const canvas = document.createElement('canvas');
+    canvas.width  = 1080;
+    canvas.height = 1080;
+    drawShareCard(canvas, r);
+
+    const fallbackText =
       `🏃 ${r.dist}km | ${r.pace}/km | ${r.time}\n` +
       `#TERRA で走ってきた\n` +
       `身体が動くほど、世界が広がる\n` +
       `https://clapyourhouse.github.io/terra`;
-    if (navigator.share) {
-      navigator.share({ text }).catch(e => {
-        if (e.name !== 'AbortError') copyToClipboard(text);
-      });
-    } else {
-      copyToClipboard(text);
-    }
+
+    canvas.toBlob(async blob => {
+      const file = new File([blob], 'terra-run.png', { type: 'image/png' });
+      // ファイル共有対応（iOS Safari / Android Chrome）
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: 'TERRA', text: '#TERRA で走ってきた' })
+          .catch(e => { if (e.name !== 'AbortError') downloadImage(blob); });
+      } else if (navigator.share) {
+        // テキストのみフォールバック
+        navigator.share({ text: fallbackText })
+          .catch(e => { if (e.name !== 'AbortError') copyToClipboard(fallbackText); });
+      } else {
+        // PCなどはダウンロード
+        downloadImage(blob);
+      }
+    }, 'image/png');
   } catch(e) {
     showToast('共有できませんでした');
   }
 }
 
-// ─── Display ─────────────────────────────────────────────────────────────────────────────────────
+function downloadImage(blob) {
+  const url = URL.createObjectURL(blob);
+  const a   = document.createElement('a');
+  a.href     = url;
+  a.download = 'terra-run.png';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('画像を保存しました');
+}
+
+function drawShareCard(canvas, run) {
+  const W   = canvas.width;
+  const H   = canvas.height;
+  const ctx = canvas.getContext('2d');
+  const ACC = '#b4e664';  // アクセント（黄緑）
+
+  // ── 背景 ────────────────────────────────────────────────────
+  ctx.fillStyle = '#080f08';
+  ctx.fillRect(0, 0, W, H);
+
+  // 微細グリッド（奥行き感）
+  ctx.strokeStyle = 'rgba(180,230,100,0.04)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x <= W; x += 90) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y <= H; y += 90) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+
+  // ── ルート描画エリア ─────────────────────────────────────────
+  const routeTop = 160;
+  const routeH   = 560;
+  const pts = positions.slice(runStartIdx);
+
+  if (pts.length >= 2) {
+    const lats = pts.map(p => p[0]);
+    const lngs = pts.map(p => p[1]);
+    const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+    const latRange    = maxLat - minLat || 0.002;
+    const lngRangeAdj = (maxLng - minLng || 0.002)
+      * Math.cos((minLat + maxLat) / 2 * Math.PI / 180);
+    const centerLat = (minLat + maxLat) / 2;
+    const centerLng = (minLng + maxLng) / 2;
+    const pad         = 100;
+    const scale       = Math.min((W - pad * 2) / lngRangeAdj, (routeH - pad * 2) / latRange);
+    const routeMidY   = routeTop + routeH / 2;
+
+    const toP = (lat, lng) => ({
+      x: W / 2 + (lng - centerLng) * Math.cos(centerLat * Math.PI / 180) * scale,
+      y: routeMidY  - (lat - centerLat) * scale,
+    });
+
+    // グロー層
+    ctx.save();
+    ctx.shadowColor = ACC;
+    ctx.shadowBlur  = 30;
+    ctx.strokeStyle = 'rgba(180,230,100,0.2)';
+    ctx.lineWidth   = 20;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath();
+    pts.forEach((p, i) => { const pt = toP(p[0],p[1]); i===0?ctx.moveTo(pt.x,pt.y):ctx.lineTo(pt.x,pt.y); });
+    ctx.stroke();
+
+    // メインライン
+    ctx.shadowBlur  = 0;
+    ctx.strokeStyle = ACC;
+    ctx.lineWidth   = 5;
+    ctx.beginPath();
+    pts.forEach((p, i) => { const pt = toP(p[0],p[1]); i===0?ctx.moveTo(pt.x,pt.y):ctx.lineTo(pt.x,pt.y); });
+    ctx.stroke();
+    ctx.restore();
+
+    // スタート点（緑丸）
+    const sp = toP(pts[0][0], pts[0][1]);
+    ctx.fillStyle = ACC;
+    ctx.beginPath(); ctx.arc(sp.x, sp.y, 10, 0, Math.PI*2); ctx.fill();
+
+    // ゴール点（オレンジ丸）
+    const ep = toP(pts[pts.length-1][0], pts[pts.length-1][1]);
+    ctx.fillStyle = '#ff9900';
+    ctx.beginPath(); ctx.arc(ep.x, ep.y, 10, 0, Math.PI*2); ctx.fill();
+  } else {
+    // GPSデータなし時の代替表示
+    ctx.fillStyle = 'rgba(180,230,100,0.06)';
+    ctx.beginPath();
+    ctx.arc(W/2, routeTop + routeH/2, 120, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // ── ヘッダー: TERRA ロゴ ────────────────────────────────────
+  ctx.fillStyle   = ACC;
+  ctx.font        = 'bold 88px -apple-system, "SF Pro Display", "Helvetica Neue", sans-serif';
+  ctx.textAlign   = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText('TERRA', 64, 52);
+
+  // 日付（右上）
+  ctx.fillStyle  = 'rgba(180,230,100,0.4)';
+  ctx.font       = '34px -apple-system, sans-serif';
+  ctx.textAlign  = 'right';
+  ctx.fillText(run.date, W - 64, 68);
+
+  // ── 区切り線 ────────────────────────────────────────────────
+  const divY = routeTop + routeH + 24;
+  ctx.strokeStyle = 'rgba(180,230,100,0.12)';
+  ctx.lineWidth   = 1;
+  ctx.beginPath(); ctx.moveTo(64, divY); ctx.lineTo(W - 64, divY); ctx.stroke();
+
+  // ── 統計 ────────────────────────────────────────────────────
+  const statsY  = divY + 36;
+  const stats   = [
+    { val: run.dist, unit: 'KM'     },
+    { val: run.pace, unit: 'MIN/KM' },
+    { val: run.time, unit: 'TIME'   },
+  ];
+  const colW = W / 3;
+  stats.forEach((s, i) => {
+    const cx = colW * i + colW / 2;
+    // 縦区切り（最初以外）
+    if (i > 0) {
+      ctx.strokeStyle = 'rgba(180,230,100,0.1)';
+      ctx.lineWidth   = 1;
+      ctx.beginPath(); ctx.moveTo(cx - colW/2, statsY); ctx.lineTo(cx - colW/2, statsY + 130); ctx.stroke();
+    }
+    ctx.fillStyle    = ACC;
+    ctx.font         = 'bold 96px -apple-system, "SF Pro Display", "Helvetica Neue", sans-serif';
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(s.val, cx, statsY);
+    ctx.fillStyle = 'rgba(180,230,100,0.35)';
+    ctx.font      = '28px -apple-system, sans-serif';
+    ctx.fillText(s.unit, cx, statsY + 102);
+  });
+
+  // ── タグライン ───────────────────────────────────────────────
+  ctx.fillStyle    = 'rgba(180,230,100,0.25)';
+  ctx.font         = '30px -apple-system, sans-serif';
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('身体が動くほど、世界が広がる', W / 2, H - 56);
+
+  // URL（最下部）
+  ctx.fillStyle = 'rgba(180,230,100,0.12)';
+  ctx.font      = '22px -apple-system, sans-serif';
+  ctx.fillText('clapyourhouse.github.io/terra', W / 2, H - 18);
+}
+
+// ─── Display ─────────────────────────────────────────────────
 function updateDisplay() {
   // ランモード：今回の距離／ウォークモード：累計距離
   document.getElementById('stat-dist').textContent = runMode ? runDist.toFixed(2) : totalDist.toFixed(2);
@@ -1468,7 +1633,7 @@ function updateTimer() {
   document.getElementById('stat-b-val').textContent = getPaceStr();
 }
 
-// ─── Haversine ───────────────────────────────────────────────────────────────────────────────────
+// ─── Haversine ───────────────────────────────────────────────
 function haversine(a, b) {
   const R    = 6371;
   const dLat = (b[0] - a[0]) * Math.PI / 180;
@@ -1478,7 +1643,7 @@ function haversine(a, b) {
   return R * 2 * Math.asin(Math.sqrt(x));
 }
 
-// ─── Toast ───────────────────────────────────────────────────────────────────────────────────────
+// ─── Toast ───────────────────────────────────────────────────
 let toastTimer = null;
 function showToast(msg) {
   const el = document.getElementById('toast');
@@ -1488,7 +1653,7 @@ function showToast(msg) {
   toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
 }
 
-// ─── 記録シート ──────────────────────────────────────────────────────────────────────────────────
+// ─── 記録シート ──────────────────────────────────────────────
 function showHistory() {
   const s = { dist: totalDist, zones: unlockedZones.size, streak: streakDays };
 
@@ -1557,7 +1722,7 @@ function hideHistory() {
   setTimeout(() => { document.getElementById('history-overlay').style.display = 'none'; }, 280);
 }
 
-// ─── ゾーン解放 全画面演出 ──────────────────────────────────────────────────────────────────────
+// ─── ゾーン解放 全画面演出 ──────────────────────────────────
 // ★ Amazon Associates タグ（承認後に実際のIDに変更）
 const AMAZON_TAG = 'clapyourhou00-22';
 
@@ -1605,7 +1770,7 @@ function closeZoneOverlay() {
   }, 380);
 }
 
-// ─── 現在ゾーン探索率 ────────────────────────────────────────────────────────────────────────────
+// ─── 現在ゾーン探索率 ────────────────────────────────────────
 const ZONE_GRID = 9; // ゾーンを9×9=81マスに分割（1マス≈55m）
 
 function getCurrentZoneCoverage() {
@@ -1633,7 +1798,7 @@ function getCurrentZoneCoverage() {
   return Math.min(100, Math.round(visited.size / (ZONE_GRID * ZONE_GRID) * 100));
 }
 
-// ─── 次エリア誘導ヒント ──────────────────────────────────────────────────────────────────────────
+// ─── 次エリア誘導ヒント ──────────────────────────────────────
 function getNextZoneHint() {
   if (!lastKnownPos) return null;
   const [lat, lng] = lastKnownPos;
@@ -1655,7 +1820,7 @@ function getNextZoneHint() {
   return `📍 ${n.label}へ約${n.dist}m、まだ霧に包まれた街がある`;
 }
 
-// ─── SNS共有 ─────────────────────────────────────────────────────────────────────────────────────
+// ─── SNS共有 ─────────────────────────────────────────────────
 async function shareResult() {
   const zoneNames = [...unlockedZones.values()]
     .filter(z => z.name)
@@ -1688,14 +1853,14 @@ function copyToClipboard(text) {
   }
 }
 
-// ─── ゾーンピン ──────────────────────────────────────────────────────────────────────────────────
+// ─── ゾーンピン ──────────────────────────────────────────────
 // ゾーン名ラベル・？ピンはすべて drawUnknownZonePins() でcanvasに直接描画
 // （Leafletマーカーは霧canvasの下に入るため廃止）
 function updateZonePins() {
   drawFog(); // canvasを再描画すれば最新のゾーン状態が反映される
 }
 
-// ─── Milestone ───────────────────────────────────────────────────────────────────────────────────
+// ─── Milestone ───────────────────────────────────────────────
 let milestoneTimer = null;
 function showMilestone(km) {
   const el = document.getElementById('milestone');
